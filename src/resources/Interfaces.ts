@@ -39,11 +39,18 @@ export interface InitialState {
 }
 
 interface FontSizes {
-  [size: string]: number
+  xs: number,
+  sm: number,
+  md: number,
+  lg: number,
+  xl: number
 }
 
 interface FontWeight {
-  [weight: string]: string
+  thin: string,
+  normal: string,
+  bold: string,
+  extraBold: string
 }
 
 export interface FontType {

@@ -42,26 +42,26 @@ export class Login extends React.Component<Props, State> {
     const { style } = this.props
     const { password } = this.state
     const disabled = !this.inputsValid()
-    const disabledStyle = disabled ? { backgroundColor: PV.Colors.gray } : null
+    const disabledStyle = disabled ? { backgroundColor: PV.Colors.grayLighter } : null
     const disabledTextStyle = disabled ? { color: PV.Colors.white } : null
 
     return (
       <View style={[styles.view, style]}>
-        <TextInput
-          keyboardType='email-address'
-          onChangeText={this.emailChanged}
-          style={styles.textField}
-          value={this.state.email}
-          autoCapitalize='none'
-          placeholder='Email' />
-        <TextInput
-          secureTextEntry={true}
-          onChangeText={this.passwordChanged}
-          style={styles.textField}
-          value={password}
-          autoCapitalize='none'
-          underlineColorAndroid='transparent'
-          placeholder='Password' />
+          <TextInput
+            keyboardType='email-address'
+            onChangeText={this.emailChanged}
+            style={styles.textField}
+            value={this.state.email}
+            autoCapitalize='none'
+            placeholder='Email' />
+          <TextInput
+            secureTextEntry={true}
+            onChangeText={this.passwordChanged}
+            style={styles.textField}
+            value={password}
+            autoCapitalize='none'
+            underlineColorAndroid='transparent'
+            placeholder='Password' />
         <TouchableOpacity
           style={[styles.signInButton, disabledStyle]}
           disabled={disabled}

@@ -1,6 +1,18 @@
 import React from 'react'
-import { Alert, Image, Keyboard, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native'
-import { Login, SignUp } from '../components'
+import {
+  Alert,
+  Image,
+  Keyboard,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
+} from 'react-native'
+import { KeyboardAvoidingView, Login, SignUp } from '../components'
 import { PV } from '../resources'
 import { Credentials, loginUser, signUpUser } from '../state/actions/auth'
 
@@ -15,6 +27,8 @@ type State = {
 
 export class AuthScreen extends React.Component<Props, State> {
 
+  scrollView: ScrollView
+
   constructor(props: Props) {
     super(props)
     this.state = {
@@ -26,7 +40,6 @@ export class AuthScreen extends React.Component<Props, State> {
     const { navigation } = this.props
 
     try {
-      console.log(credentials)
       await loginUser(credentials)
       if (navigation.getParam('isOnboarding', false)) {
         navigation.navigate(PV.RouteNames.MainApp)
@@ -58,31 +71,54 @@ export class AuthScreen extends React.Component<Props, State> {
 
   render() {
     return (
-      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-        <View style={styles.view}>
-          <Image source={PV.Images.BANNER} style={styles.banner} resizeMode='contain' />
-          <View style={styles.contentView}>
-            {!this.state.showSignUp ? <Login onLoginPressed={this.attemptLogin} />
-              : <SignUp onSignUpPressed={this.attemptSignUp} />}
-            <Text
-              onPress={this.switchOptions}
-              style={styles.switchOptionText}>
-              {this.state.showSignUp ? 'Login' : 'SignUp'}
-            </Text>
-          </View>
-        </View>
-      </TouchableWithoutFeedback>
+      <SafeAreaView style={{ flex: 1, backgroundColor: PV.Colors.brandColor }}>
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+          <KeyboardAvoidingView style={{ backgroundColor: PV.Colors.brandColor }} scrollToOffset={(offest: number) => {
+            this.scrollView.scrollTo({ x: 0, y: offest, animated: true }, 200)
+          }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.view} ref={(ref) => this.scrollView = ref}>
+              <Image source={PV.Images.BANNER} style={styles.banner} resizeMode='contain' />
+              <View style={styles.contentView}>
+                {!this.state.showSignUp ? <Login onLoginPressed={this.attemptLogin} />
+                  : <SignUp onSignUpPressed={this.attemptSignUp} />}
+                <Text
+                  onPress={this.switchOptions}
+                  style={styles.switchOptionText}>
+                  {this.state.showSignUp ? 'Login' : 'SignUp'}
+                </Text>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+        {Platform.OS === 'ios' &&
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => this.props.navigation.goBack(null)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>}
+      </SafeAreaView>
     )
   }
 }
 
 const styles = StyleSheet.create({
   view: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
     justifyContent: 'flex-start',
     alignItems: 'center',
     backgroundColor: PV.Colors.brandColor,
-    paddingTop: 100
+    paddingTop: 60
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40
+  },
+  closeButtonText: {
+    fontWeight: PV.Fonts.weights.bold,
+    fontSize: PV.Fonts.sizes.md,
+    padding: 15,
+    color: PV.Colors.white
   },
   contentView: {
     width: '100%',

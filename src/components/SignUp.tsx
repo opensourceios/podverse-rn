@@ -15,7 +15,7 @@ type State = {
 }
 
 export class SignUp extends React.Component<Props, State> {
-  constructor (props: Props) {
+  constructor(props: Props) {
     super(props)
     this.state = {
       email: '',
@@ -54,11 +54,11 @@ export class SignUp extends React.Component<Props, State> {
     this.setState({ name })
   }
 
-  render () {
+  render() {
     const { style } = this.props
     const { password, passwordVerification } = this.state
     const disabled = !this.inputsValid()
-    const disabledStyle = disabled ? { backgroundColor: PV.Colors.grayDark } : null
+    const disabledStyle = disabled ? { backgroundColor: PV.Colors.grayLighter } : null
     const disabledTextStyle = disabled ? { color: PV.Colors.white } : null
 
     const passwordMismatch = passwordVerification.length > 0 && passwordVerification !== password
@@ -68,34 +68,34 @@ export class SignUp extends React.Component<Props, State> {
     }
     return (
       <View style={[styles.view, style]}>
-        <TextInput
-          keyboardType='email-address'
-          onChangeText={this.emailChanged}
-          style={styles.textField}
-          value={this.state.email}
-          autoCapitalize='none'
-          placeholder='Email'/>
-        <TextInput
-          secureTextEntry={true}
-          onChangeText={this.passwordChanged}
-          style={styles.textField}
-          value={this.state.password}
-          underlineColorAndroid='transparent'
-          autoCapitalize='none'
-          placeholder='Password'/>
-        <TextInput
-          secureTextEntry={true}
-          onChangeText={this.passwordVerificationChanged}
-          style={[styles.textField, passwordMismatch ? errorStyle : null]}
-          autoCapitalize='none'
-          value={this.state.passwordVerification}
-          underlineColorAndroid='transparent'
-          placeholder='Verify Password' />
-        <TextInput
-          onChangeText={this.nameChanged}
-          style={styles.textField}
-          value={this.state.name}
-          placeholder='Name'/>
+          <TextInput
+            keyboardType='email-address'
+            onChangeText={this.emailChanged}
+            style={styles.textField}
+            value={this.state.email}
+            autoCapitalize='none'
+            placeholder='Email' />
+          <TextInput
+            secureTextEntry={true}
+            onChangeText={this.passwordChanged}
+            style={styles.textField}
+            value={this.state.password}
+            underlineColorAndroid='transparent'
+            autoCapitalize='none'
+            placeholder='Password' />
+          <TextInput
+            secureTextEntry={true}
+            onChangeText={this.passwordVerificationChanged}
+            style={[styles.textField, passwordMismatch ? errorStyle : null]}
+            autoCapitalize='none'
+            value={this.state.passwordVerification}
+            underlineColorAndroid='transparent'
+            placeholder='Verify Password' />
+          <TextInput
+            onChangeText={this.nameChanged}
+            style={styles.textField}
+            value={this.state.name}
+            placeholder='Name' />
         <TouchableOpacity
           style={[styles.signInButton, disabledStyle]}
           disabled={disabled}
