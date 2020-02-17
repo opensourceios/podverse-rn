@@ -27,6 +27,22 @@ export const readableDate = (date: string) => {
   return month + '/' + day + '/' + year
 }
 
+export const getHHMMSSArray = (sec: number) => {
+  sec = sec > -1 ? sec : 0
+  const str = convertSecToHHMMSS(sec)
+  const delimitedArray = str.split(':')
+
+  if (delimitedArray.length === 1) {
+    delimitedArray.unshift(0)
+    delimitedArray.unshift(0)
+  } else if (delimitedArray.length === 2) {
+    delimitedArray.unshift(0)
+  }
+
+  const parsedArray = delimitedArray.map((x) => parseInt(x, 10))
+  return parsedArray
+}
+
 export const convertSecToHHMMSS = (sec: number) => {
   let totalSec = Math.floor(sec)
   const hours = Math.floor(totalSec / 3600)
@@ -302,12 +318,6 @@ export const checkIfIdMatchesClipIdOrEpisodeId = (
   return id === clipId ||
     (!clipId && addByRSSPodcastFeedUrl && id === addByRSSPodcastFeedUrl) ||
     (!clipId && episodeId && id === episodeId)
-}
-
-export const validateEmail = (email?: string) => {
-  /* tslint:disable-next-line max-line-length */
-  const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-  return re.test(String(email).toLowerCase())
 }
 
 export const createEmailLinkUrl = (email: string, subject?: string, body?: string) => {
