@@ -3,7 +3,7 @@ import { Platform } from 'react-native'
 import BackgroundTimer from 'react-native-background-timer'
 import { NowPlayingItem } from '../lib/NowPlayingItem'
 import { PV } from '../resources'
-import { setNowPlayingItem } from '../state/actions/player'
+import { initializePlayerQueue, setNowPlayingItem } from '../state/actions/player'
 import { addOrUpdateHistoryItem, checkIfPlayingFromHistory } from './history'
 import {
   getClipHasEnded,
@@ -19,14 +19,10 @@ import {
   updateUserPlaybackPosition
 } from './player'
 import PlayerEventEmitter from './playerEventEmitter'
-const debouncedSetPlaybackPosition = debounce(
-  setPlaybackPositionWhenDurationIsAvailable,
-  1000,
-  {
-    leading: true,
-    trailing: false
-  }
-)
+const debouncedSetPlaybackPosition = debounce(setPlaybackPositionWhenDurationIsAvailable, 1000, {
+  leading: true,
+  trailing: false
+})
 
 // NOTE: Sometimes when there is poor internet connectivity, the addOrUpdateHistoryItem request will fail.
 // This will result in the current item mising from the user's history, and the next time they open
@@ -77,14 +73,8 @@ const handleSyncNowPlayingItem = async (
     if (currentNowPlayingItem && currentNowPlayingItem.clipId) {
       PlayerEventEmitter.emit(PV.Events.PLAYER_CLIP_LOADED)
     }
-    if (
-      !currentNowPlayingItem.clipId &&
-      currentNowPlayingItem.userPlaybackPosition
-    ) {
-      debouncedSetPlaybackPosition(
-        currentNowPlayingItem.userPlaybackPosition,
-        trackId
-      )
+    if (!currentNowPlayingItem.clipId && currentNowPlayingItem.userPlaybackPosition) {
+      debouncedSetPlaybackPosition(currentNowPlayingItem.userPlaybackPosition, trackId)
     }
 
     const isPlayingFromHistory = await checkIfPlayingFromHistory()
@@ -107,16 +97,10 @@ const syncNowPlayingItemWithTrack = async () => {
   // or getNowPlayingItemFromQueueOrHistoryByTrackId...
   async function sync(isSecondTime?: boolean) {
     const currentTrackId = await PVTrackPlayer.getCurrentTrack()
-    const currentNowPlayingItem = await getNowPlayingItemFromQueueOrHistoryByTrackId(
-      currentTrackId
-    )
+    const currentNowPlayingItem = await getNowPlayingItemFromQueueOrHistoryByTrackId(currentTrackId)
 
     if (currentNowPlayingItem) {
-      await handleSyncNowPlayingItem(
-        currentTrackId,
-        currentNowPlayingItem,
-        isSecondTime
-      )
+      await handleSyncNowPlayingItem(currentTrackId, currentNowPlayingItem, isSecondTime)
     }
   }
 
@@ -125,10 +109,24 @@ const syncNowPlayingItemWithTrack = async () => {
   setTimeout(() => sync(isSecondTime), 5000)
 }
 
+// NOTE: On iOS, when returning to the app from the background while the player was paused,
+// sometimes the player will be in an idle state, requiring the user to press play twice to
+// reload the item in the player and begin playing. By calling initializePlayerQueue once whenever
+// the idle playback-state event is called, it automatically reloads the item.
+// I don't think this issue is happening on Android, so we're not using this workaround on Android.
+const reloadFromIdleState = async () => {
+  if (Platform.OS === 'ios') {
+    await initializePlayerQueue()
+  }
+}
+
+const debouncedReloadFromIdleState = debounce(reloadFromIdleState, 10000, {
+  leading: true,
+  trailing: false
+})
+
 module.exports = async () => {
-  PVTrackPlayer.addEventListener('playback-error', (x) =>
-    console.log('playback error', x)
-  )
+  PVTrackPlayer.addEventListener('playback-error', (x) => console.log('playback error', x))
 
   PVTrackPlayer.addEventListener('playback-queue-ended', async (x) => {
     console.log('playback-queue-ended', x)
@@ -138,16 +136,8 @@ module.exports = async () => {
   PVTrackPlayer.addEventListener('playback-state', async (x) => {
     console.log('playback-state', x)
 
-    // Sometimes when the app is paused, and the app switches between wifi, data, or airplane mode,
-    // the TrackPlayer will be in an "idle" or "none" state when you return to the app.
-    // This line is an attempt to prevent the UI from getting frozen in a buffering state.
-    // NOTE: As of 10/23/19 I can't reproduce the problem...hopefully it was fixed in iOS or the TrackPlayer.
-    if (
-      x.state === 'idle' ||
-      x.state === 0 ||
-      x.state === PVTrackPlayer.STATE_NONE
-    ) {
-      // setTimeout(syncNowPlayingItemWithTrack, 1000)
+    if (x.state === 'idle' || x.state === 0 || x.state === PVTrackPlayer.STATE_NONE) {
+      await debouncedReloadFromIdleState()
       return
     }
 
@@ -162,12 +152,7 @@ module.exports = async () => {
       const currentState = await PVTrackPlayer.getState()
       const isPlaying = currentState === PVTrackPlayer.STATE_PLAYING
 
-      if (
-        clipHasEnded &&
-        clipEndTime &&
-        currentPosition >= clipEndTime &&
-        isPlaying
-      ) {
+      if (clipHasEnded && clipEndTime && currentPosition >= clipEndTime && isPlaying) {
         await handleResumeAfterClipHasEnded()
       }
 
@@ -214,13 +199,9 @@ module.exports = async () => {
     PlayerEventEmitter.emit(PV.Events.PLAYER_PLAYBACK_ERROR)
   })
 
-  PVTrackPlayer.addEventListener('remote-jump-backward', () =>
-    playerJumpBackward(PV.Player.jumpSeconds)
-  )
+  PVTrackPlayer.addEventListener('remote-jump-backward', () => playerJumpBackward(PV.Player.jumpSeconds))
 
-  PVTrackPlayer.addEventListener('remote-jump-forward', () =>
-    playerJumpForward(PV.Player.jumpSeconds)
-  )
+  PVTrackPlayer.addEventListener('remote-jump-forward', () => playerJumpForward(PV.Player.jumpSeconds))
 
   PVTrackPlayer.addEventListener('remote-pause', async () => {
     PVTrackPlayer.pause()
@@ -302,17 +283,10 @@ const handlePlayerClipLoaded = async () => {
       }
     }
     const resolveImmediately = true
-    await debouncedSetPlaybackPosition(
-      nowPlayingItem.clipStartTime,
-      nowPlayingItem.clipId,
-      resolveImmediately
-    )
+    await debouncedSetPlaybackPosition(nowPlayingItem.clipStartTime, nowPlayingItem.clipId, resolveImmediately)
   }
 }
 
 const debouncedHandlePlayerClipLoaded = debounce(handlePlayerClipLoaded, 1000)
 
-PlayerEventEmitter.on(
-  PV.Events.PLAYER_CLIP_LOADED,
-  debouncedHandlePlayerClipLoaded
-)
+PlayerEventEmitter.on(PV.Events.PLAYER_CLIP_LOADED, debouncedHandlePlayerClipLoaded)

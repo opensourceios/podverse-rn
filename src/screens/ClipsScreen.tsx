@@ -16,10 +16,7 @@ import {
 import { getDownloadedEpisodeIds } from '../lib/downloadedPodcast'
 import { downloadEpisode } from '../lib/downloader'
 import { hasValidNetworkConnection } from '../lib/network'
-import {
-  convertNowPlayingItemToEpisode,
-  convertToNowPlayingItem
-} from '../lib/NowPlayingItem'
+import { convertNowPlayingItemToEpisode, convertToNowPlayingItem } from '../lib/NowPlayingItem'
 import { isOdd, safelyUnwrapNestedVariable } from '../lib/utility'
 import { PV } from '../resources'
 import { gaTrackPageView } from '../services/googleAnalytics'
@@ -38,6 +35,7 @@ type State = {
   flatListDataTotalCount: number | null
   isLoading: boolean
   isLoadingMore: boolean
+  isRefreshing: boolean
   mediaRefIdToDelete?: string
   queryFrom: string | null
   queryPage: number
@@ -65,23 +63,15 @@ export class ClipsScreen extends React.Component<Props, State> {
       flatListDataTotalCount: null,
       isLoading: true,
       isLoadingMore: false,
-      queryFrom:
-        subscribedPodcastIds && subscribedPodcastIds.length > 0
-          ? _subscribedKey
-          : _allPodcastsKey,
+      isRefreshing: false,
+      queryFrom: subscribedPodcastIds && subscribedPodcastIds.length > 0 ? _subscribedKey : _allPodcastsKey,
       queryPage: 1,
-      querySort:
-        subscribedPodcastIds && subscribedPodcastIds.length > 0
-          ? _mostRecentKey
-          : _topPastWeek,
+      querySort: subscribedPodcastIds && subscribedPodcastIds.length > 0 ? _mostRecentKey : _topPastWeek,
       searchBarText: '',
       showActionSheet: false
     }
 
-    this._handleSearchBarTextQuery = debounce(
-      this._handleSearchBarTextQuery,
-      PV.SearchBar.textInputDebounceTime
-    )
+    this._handleSearchBarTextQuery = debounce(this._handleSearchBarTextQuery, PV.SearchBar.textInputDebounceTime)
   }
 
   async componentDidMount() {
@@ -136,12 +126,7 @@ export class ClipsScreen extends React.Component<Props, State> {
   }
 
   _onEndReached = ({ distanceFromEnd }) => {
-    const {
-      endOfResultsReached,
-      isLoadingMore,
-      queryFrom,
-      queryPage = 1
-    } = this.state
+    const { endOfResultsReached, isLoadingMore, queryFrom, queryPage = 1 } = this.state
     if (!endOfResultsReached && !isLoadingMore) {
       if (distanceFromEnd > -1) {
         this.setState(
@@ -159,6 +144,23 @@ export class ClipsScreen extends React.Component<Props, State> {
         )
       }
     }
+  }
+
+  _onRefresh = () => {
+    const { queryFrom } = this.state
+
+    this.setState(
+      {
+        isRefreshing: true
+      },
+      async () => {
+        const newState = await this._queryData(queryFrom, {
+          queryPage: 1,
+          searchAllFieldsText: this.state.searchBarText
+        })
+        this.setState(newState)
+      }
+    )
   }
 
   _ListHeaderComponent = () => {
@@ -200,18 +202,17 @@ export class ClipsScreen extends React.Component<Props, State> {
         episodeId={item.episode.id}
         episodePubDate={item.episode.pubDate}
         episodeTitle={item.episode.title}
-        handleMorePress={() =>
-          this._handleMorePress(convertToNowPlayingItem(item, null, null))
-        }
-        handleNavigationPress={() =>
-          this._handleNavigationPress(convertToNowPlayingItem(item, null, null))
-        }
+        handleMorePress={() => this._handleMorePress(convertToNowPlayingItem(item, null, null))}
+        handleNavigationPress={() => this._handleNavigationPress(convertToNowPlayingItem(item, null, null))}
         hasZebraStripe={isOdd(index)}
         podcastImageUrl={item.episode.podcast.shrunkImageUrl || item.episode.podcast.imageUrl}
         podcastTitle={item.episode.podcast.title}
         startTime={item.startTime}
-        title={item.title || 'untitled clip'} />
-    ) : (<></>)
+        title={item.title || 'untitled clip'}
+      />
+    ) : (
+      <></>
+    )
   }
 
   _handleSearchBarClear = (text: string) => {
@@ -238,10 +239,7 @@ export class ClipsScreen extends React.Component<Props, State> {
     )
   }
 
-  _handleSearchBarTextQuery = async (
-    queryFrom: string | null,
-    queryOptions: any
-  ) => {
+  _handleSearchBarTextQuery = async (queryFrom: string | null, queryOptions: any) => {
     this.setState(
       {
         flatListData: [],
@@ -265,10 +263,7 @@ export class ClipsScreen extends React.Component<Props, State> {
   }
 
   _renderHiddenItem = ({ item }, rowMap) => (
-    <SwipeRowBack
-      onPress={() => this._handleHiddenItemPress(item.id, rowMap)}
-      text='Delete'
-    />
+    <SwipeRowBack onPress={() => this._handleHiddenItemPress(item.id, rowMap)} text='Delete' />
   )
 
   _handleHiddenItemPress = (selectedId, rowMap) => {
@@ -295,9 +290,7 @@ export class ClipsScreen extends React.Component<Props, State> {
         async () => {
           try {
             await deleteMediaRef(mediaRefIdToDelete)
-            flatListData = flatListData.filter(
-              (x: any) => x.id !== mediaRefIdToDelete
-            )
+            flatListData = flatListData.filter((x: any) => x.id !== mediaRefIdToDelete)
             flatListDataTotalCount = flatListData.length
           } catch (error) {
             if (error.response) {
@@ -339,6 +332,7 @@ export class ClipsScreen extends React.Component<Props, State> {
       queryFrom,
       isLoading,
       isLoadingMore,
+      isRefreshing,
       querySort,
       searchBarText,
       selectedItem,
@@ -368,14 +362,14 @@ export class ClipsScreen extends React.Component<Props, State> {
             extraData={flatListData}
             handleSearchNavigation={this._handleSearchNavigation}
             isLoadingMore={isLoadingMore}
+            isRefreshing={isRefreshing}
             ItemSeparatorComponent={this._ItemSeparatorComponent}
             ListHeaderComponent={this._ListHeaderComponent}
             noSubscribedPodcasts={
-              queryFrom === _subscribedKey &&
-              (!flatListData || flatListData.length === 0) &&
-              !searchBarText
+              queryFrom === _subscribedKey && (!flatListData || flatListData.length === 0) && !searchBarText
             }
             onEndReached={this._onEndReached}
+            onRefresh={this._onRefresh}
             renderHiddenItem={this._renderHiddenItem}
             renderItem={this._renderClipItem}
             showNoInternetConnectionMessage={showNoInternetConnectionMessage}
@@ -418,6 +412,7 @@ export class ClipsScreen extends React.Component<Props, State> {
     const newState = {
       isLoading: false,
       isLoadingMore: false,
+      isRefreshing: false,
       showNoInternetConnectionMessage: false
     } as State
 
@@ -425,10 +420,13 @@ export class ClipsScreen extends React.Component<Props, State> {
     newState.showNoInternetConnectionMessage = !hasInternetConnection
 
     try {
-      const { flatListData, queryFrom, querySort } = this.state
+      let { flatListData } = this.state
+      const { queryFrom, querySort } = this.state
       const podcastId = this.global.session.userInfo.subscribedPodcastIds
       const nsfwMode = this.global.settings.nsfwMode
       const { queryPage, searchAllFieldsText } = queryOptions
+
+      flatListData = queryOptions && queryOptions.queryPage === 1 ? [] : flatListData
 
       if (filterKey === _subscribedKey) {
         const results = await getMediaRefs(
@@ -443,8 +441,7 @@ export class ClipsScreen extends React.Component<Props, State> {
           this.global.settings.nsfwMode
         )
         newState.flatListData = [...flatListData, ...results[0]]
-        newState.endOfResultsReached =
-          newState.flatListData.length >= results[1]
+        newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
       } else if (filterKey === _downloadedKey) {
         const downloadedEpisodeIds = await getDownloadedEpisodeIds()
@@ -460,8 +457,7 @@ export class ClipsScreen extends React.Component<Props, State> {
           this.global.settings.nsfwMode
         )
         newState.flatListData = [...flatListData, ...results[0]]
-        newState.endOfResultsReached =
-          newState.flatListData.length >= results[1]
+        newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
       } else if (filterKey === _allPodcastsKey) {
         const { searchBarText: searchAllFieldsText } = this.state
@@ -475,8 +471,7 @@ export class ClipsScreen extends React.Component<Props, State> {
           this.global.settings.nsfwMode
         )
         newState.flatListData = [...flatListData, ...results[0]]
-        newState.endOfResultsReached =
-          newState.flatListData.length >= results[1]
+        newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
       } else if (filterKey === _myClipsKey) {
         const results = await getLoggedInUserMediaRefs(
@@ -488,8 +483,7 @@ export class ClipsScreen extends React.Component<Props, State> {
           this.global.settings.nsfwMode
         )
         newState.flatListData = [...flatListData, ...results[0]]
-        newState.endOfResultsReached =
-          newState.flatListData.length >= results[1]
+        newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
       } else if (rightItems.some((option) => option.value === filterKey)) {
         const results = await getMediaRefs(
@@ -503,8 +497,7 @@ export class ClipsScreen extends React.Component<Props, State> {
           nsfwMode
         )
         newState.flatListData = results[0]
-        newState.endOfResultsReached =
-          newState.flatListData.length >= results[1]
+        newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
       }
 
