@@ -192,11 +192,6 @@ const comparisonData = [
     column2: true
   },
   {
-    text: 'create sharable clips of any length',
-    column1: true,
-    column2: true
-  },
-  {
     text: 'sleep timer',
     column1: true,
     column2: true
@@ -204,6 +199,11 @@ const comparisonData = [
   {
     text: 'large font accessibility support',
     column1: true,
+    column2: true
+  },
+  {
+    text: 'create clips of any length',
+    column1: false,
     column2: true
   },
   {

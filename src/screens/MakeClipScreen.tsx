@@ -170,7 +170,7 @@ export class MakeClipScreen extends React.Component<Props, State> {
     const { isLoggedIn } = session
 
     if (!isLoggedIn) {
-      Alert.alert('Login Needed', 'You need to login to make clips.', [
+      Alert.alert('Login Needed', 'Please login to create and share clips.', [
         { text: 'OK' },
         {
           text: 'Go to Login',
@@ -345,7 +345,7 @@ export class MakeClipScreen extends React.Component<Props, State> {
                   fontSizeLargestScale={PV.Fonts.largeSizes.md}
                   numberOfLines={1}
                   style={[core.textInputLabel, styles.loginMessage]}>
-                  You must be logged in to make clips.
+                  Please login to create and share clips.
                 </Text>
                 <Divider style={styles.divider} />
               </RNView>
