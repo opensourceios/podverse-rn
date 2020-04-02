@@ -1,4 +1,4 @@
-import { Alert, Linking, StyleSheet, View as RNView } from 'react-native'
+import { Linking, StyleSheet, View as RNView } from 'react-native'
 import React from 'reactn'
 import { Divider, Icon, ScrollView, Text, View } from '../components'
 import { PV } from '../resources'
@@ -16,13 +16,6 @@ export class AboutScreen extends React.Component<Props, State> {
 
   componentDidMount() {
     gaTrackPageView('/about', 'About Screen')
-  }
-
-  showLeavingAppAlert = (url: string) => {
-    Alert.alert(PV.Alerts.LEAVING_APP.title, PV.Alerts.LEAVING_APP.message, [
-      { text: 'Cancel' },
-      { text: 'Yes', onPress: () => Linking.openURL(url) }
-    ])
   }
 
   render() {
