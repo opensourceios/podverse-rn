@@ -260,14 +260,16 @@ const sendPlayerScreenGoogleAnalyticsPageView = (item: any) => {
   }
 }
 
-export const loadItemAndPlayTrack = async (item: NowPlayingItem, shouldPlay: boolean, skipUpdateHistory?: boolean) => {
+export const loadItemAndPlayTrack = async (item: NowPlayingItem, shouldPlay: boolean) => {
   await updateUserPlaybackPosition()
 
   if (!item) return
 
+  const lastPlayingItem = await getNowPlayingItem()
+
   // Episodes and clips must be already loaded in history
   // in order to be handled in playerEvents > handleSyncNowPlayingItem.
-  if (!skipUpdateHistory) await addOrUpdateHistoryItem(item)
+  await addOrUpdateHistoryItem(item)
 
   await TrackPlayer.reset()
   const track = (await createTrack(item)) as Track
@@ -283,6 +285,11 @@ export const loadItemAndPlayTrack = async (item: NowPlayingItem, shouldPlay: boo
       AsyncStorage.setItem(PV.Keys.PLAYER_SHOULD_PLAY_WHEN_CLIP_IS_LOADED, 'true')
     }
   }
+
+  if (lastPlayingItem && lastPlayingItem.episodeId && lastPlayingItem.episodeId !== item.episodeId) {
+    PlayerEventEmitter.emit(PV.Events.PLAYER_NEW_EPISODE_LOADED)
+  }
+
   sendPlayerScreenGoogleAnalyticsPageView(item)
 }
 

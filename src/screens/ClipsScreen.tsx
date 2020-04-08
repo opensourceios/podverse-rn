@@ -17,7 +17,7 @@ import { getDownloadedEpisodeIds } from '../lib/downloadedPodcast'
 import { downloadEpisode } from '../lib/downloader'
 import { hasValidNetworkConnection } from '../lib/network'
 import { convertNowPlayingItemToEpisode, convertToNowPlayingItem } from '../lib/NowPlayingItem'
-import { isOdd, safelyUnwrapNestedVariable } from '../lib/utility'
+import { isOdd, safelyUnwrapNestedVariable, setCategoryQueryProperty } from '../lib/utility'
 import { PV } from '../resources'
 import { gaTrackPageView } from '../services/googleAnalytics'
 import { deleteMediaRef, getMediaRefs } from '../services/mediaRef'
@@ -33,6 +33,7 @@ type State = {
   endOfResultsReached: boolean
   flatListData: any[]
   flatListDataTotalCount: number | null
+  hideRightItemWhileLoading: boolean
   isLoading: boolean
   isLoadingMore: boolean
   isRefreshing: boolean
@@ -41,7 +42,9 @@ type State = {
   queryPage: number
   querySort: string | null
   searchBarText: string
+  selectedCategory: string | null
   selectedItem?: any
+  selectedSubCategory: string | null
   showActionSheet: boolean
   showDeleteConfirmDialog?: boolean
   showNoInternetConnectionMessage?: boolean
@@ -61,13 +64,20 @@ export class ClipsScreen extends React.Component<Props, State> {
       endOfResultsReached: false,
       flatListData: [],
       flatListDataTotalCount: null,
+      hideRightItemWhileLoading: false,
       isLoading: true,
       isLoadingMore: false,
       isRefreshing: false,
-      queryFrom: subscribedPodcastIds && subscribedPodcastIds.length > 0 ? _subscribedKey : _allPodcastsKey,
+      queryFrom:
+        subscribedPodcastIds && subscribedPodcastIds.length > 0
+          ? PV.Filters._subscribedKey
+          : PV.Filters._allPodcastsKey,
       queryPage: 1,
-      querySort: subscribedPodcastIds && subscribedPodcastIds.length > 0 ? _mostRecentKey : _topPastWeek,
+      querySort:
+        subscribedPodcastIds && subscribedPodcastIds.length > 0 ? PV.Filters._mostRecentKey : PV.Filters._topPastWeek,
       searchBarText: '',
+      selectedCategory: PV.Filters._allCategoriesKey,
+      selectedSubCategory: PV.Filters._allCategoriesKey,
       showActionSheet: false
     }
 
@@ -87,14 +97,31 @@ export class ClipsScreen extends React.Component<Props, State> {
       return
     }
 
+    const { querySort } = this.state
+
+    let sort = querySort
+    let hideRightItemWhileLoading = false
+    if (
+      (selectedKey === PV.Filters._allPodcastsKey || selectedKey === PV.Filters._categoryKey) &&
+      (querySort === PV.Filters._mostRecentKey || querySort === PV.Filters._randomKey)
+    ) {
+      sort = PV.Filters._topPastWeek
+      hideRightItemWhileLoading = true
+    } else if (selectedKey === PV.Filters._downloadedKey) {
+      sort = PV.Filters._mostRecentKey
+      hideRightItemWhileLoading = true
+    }
+
     this.setState(
       {
         endOfResultsReached: false,
         flatListData: [],
         flatListDataTotalCount: null,
+        hideRightItemWhileLoading,
         isLoading: true,
         queryFrom: selectedKey,
         queryPage: 1,
+        querySort: sort,
         searchBarText: ''
       },
       async () => {
@@ -121,6 +148,30 @@ export class ClipsScreen extends React.Component<Props, State> {
       },
       async () => {
         const newState = await this._queryData(selectedKey)
+        this.setState(newState)
+      }
+    )
+  }
+
+  _selectCategory = async (selectedKey: string, isSubCategory?: boolean) => {
+    if (!selectedKey) {
+      this.setState({
+        ...((isSubCategory ? { selectedSubCategory: null } : { selectedCategory: null }) as any)
+      })
+      return
+    }
+
+    this.setState(
+      {
+        endOfResultsReached: false,
+        isLoading: true,
+        ...((isSubCategory ? { selectedSubCategory: selectedKey } : { selectedCategory: selectedKey }) as any),
+        flatListData: [],
+        flatListDataTotalCount: null,
+        queryPage: 1
+      },
+      async () => {
+        const newState = await this._queryData(selectedKey, { isSubCategory })
         this.setState(newState)
       }
     )
@@ -330,36 +381,50 @@ export class ClipsScreen extends React.Component<Props, State> {
     const {
       flatListData,
       flatListDataTotalCount,
-      queryFrom,
+      hideRightItemWhileLoading,
       isLoading,
       isLoadingMore,
       isRefreshing,
+      queryFrom,
       querySort,
       searchBarText,
+      selectedCategory,
       selectedItem,
+      selectedSubCategory,
       showActionSheet,
       showDeleteConfirmDialog,
       showNoInternetConnectionMessage
     } = this.state
     const { session } = this.global
-    const { isLoggedIn } = session
 
     return (
       <View style={styles.view}>
         <TableSectionSelectors
           handleSelectLeftItem={this.selectLeftItem}
           handleSelectRightItem={this.selectRightItem}
-          leftItems={leftItems(isLoggedIn)}
-          rightItems={queryFrom ? rightItems : []}
+          hideRightItemWhileLoading={hideRightItemWhileLoading}
+          screenName='ClipsScreen'
           selectedLeftItemKey={queryFrom}
           selectedRightItemKey={querySort}
         />
+        {queryFrom === PV.Filters._categoryKey && (
+          <TableSectionSelectors
+            handleSelectLeftItem={(x: string) => this._selectCategory(x)}
+            handleSelectRightItem={(x: string) => this._selectCategory(x, true)}
+            hideRightItemWhileLoading={hideRightItemWhileLoading}
+            isBottomBar={true}
+            isCategories={true}
+            screenName='ClipsScreen'
+            selectedLeftItemKey={selectedCategory}
+            selectedRightItemKey={selectedSubCategory}
+          />
+        )}
         {isLoading && <ActivityIndicator />}
         {!isLoading && queryFrom && (
           <FlatList
             data={flatListData}
             dataTotalCount={flatListDataTotalCount}
-            disableLeftSwipe={queryFrom !== _myClipsKey}
+            disableLeftSwipe={queryFrom !== PV.Filters._myClipsKey}
             extraData={flatListData}
             handleSearchNavigation={this._handleSearchNavigation}
             isLoadingMore={isLoadingMore}
@@ -367,7 +432,7 @@ export class ClipsScreen extends React.Component<Props, State> {
             ItemSeparatorComponent={this._ItemSeparatorComponent}
             ListHeaderComponent={this._ListHeaderComponent}
             noSubscribedPodcasts={
-              queryFrom === _subscribedKey && (!flatListData || flatListData.length === 0) && !searchBarText
+              queryFrom === PV.Filters._subscribedKey && (!flatListData || flatListData.length === 0) && !searchBarText
             }
             onEndReached={this._onEndReached}
             onRefresh={this._onRefresh}
@@ -381,7 +446,7 @@ export class ClipsScreen extends React.Component<Props, State> {
           items={() => {
             if (!selectedItem) return []
 
-            if (queryFrom === _myClipsKey) {
+            if (queryFrom === PV.Filters._myClipsKey) {
               const loggedInUserId = safelyUnwrapNestedVariable(() => session.userInfo.id, '')
               selectedItem.ownerId = loggedInUserId
             }
@@ -409,11 +474,13 @@ export class ClipsScreen extends React.Component<Props, State> {
   _queryData = async (
     filterKey: string | null,
     queryOptions: {
+      isSubCategory?: boolean
       queryPage?: number
       searchAllFieldsText?: string
     } = {}
   ) => {
     const newState = {
+      hideRightItemWhileLoading: false,
       isLoading: false,
       isLoadingMore: false,
       isRefreshing: false,
@@ -425,14 +492,14 @@ export class ClipsScreen extends React.Component<Props, State> {
 
     try {
       let { flatListData } = this.state
-      const { queryFrom, querySort } = this.state
+      const { queryFrom, querySort, selectedCategory, selectedSubCategory } = this.state
       const podcastId = this.global.session.userInfo.subscribedPodcastIds
       const nsfwMode = this.global.settings.nsfwMode
       const { queryPage, searchAllFieldsText } = queryOptions
 
       flatListData = queryOptions && queryOptions.queryPage === 1 ? [] : flatListData
 
-      if (filterKey === _subscribedKey) {
+      if (filterKey === PV.Filters._subscribedKey) {
         const results = await getMediaRefs(
           {
             sort: querySort,
@@ -447,13 +514,14 @@ export class ClipsScreen extends React.Component<Props, State> {
         newState.flatListData = [...flatListData, ...results[0]]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
-      } else if (filterKey === _downloadedKey) {
-        const downloadedEpisodeIds = await getDownloadedEpisodeIds()
+      } else if (filterKey === PV.Filters._downloadedKey) {
+        const downloadedEpisodeIdsObj = await getDownloadedEpisodeIds()
+        const downloadedEpisodeIds = Object.keys(downloadedEpisodeIdsObj)
         const results = await getMediaRefs(
           {
             sort: querySort,
             page: queryPage,
-            episodeId: Object.keys(downloadedEpisodeIds),
+            episodeId: downloadedEpisodeIds,
             ...(searchAllFieldsText ? { searchAllFieldsText } : {}),
             subscribedOnly: true,
             includePodcast: true
@@ -463,21 +531,12 @@ export class ClipsScreen extends React.Component<Props, State> {
         newState.flatListData = [...flatListData, ...results[0]]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
-      } else if (filterKey === _allPodcastsKey) {
-        const { searchBarText: searchAllFieldsText } = this.state
-        const results = await getMediaRefs(
-          {
-            sort: querySort,
-            page: queryPage,
-            ...(searchAllFieldsText ? { searchAllFieldsText } : {}),
-            includePodcast: true
-          },
-          this.global.settings.nsfwMode
-        )
+      } else if (filterKey === PV.Filters._allPodcastsKey) {
+        const results = await this._queryAllMediaRefs(querySort, queryPage)
         newState.flatListData = [...flatListData, ...results[0]]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
-      } else if (filterKey === _myClipsKey) {
+      } else if (filterKey === PV.Filters._myClipsKey) {
         const results = await getLoggedInUserMediaRefs(
           {
             sort: querySort,
@@ -489,17 +548,53 @@ export class ClipsScreen extends React.Component<Props, State> {
         newState.flatListData = [...flatListData, ...results[0]]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
-      } else if (rightItems.some((option) => option.value === filterKey)) {
+      } else if (filterKey === PV.Filters._categoryKey) {
+        if (selectedCategory && selectedSubCategory === PV.Filters._allCategoriesKey) {
+          const results = await this._queryMediaRefsByCategory(selectedCategory, querySort, queryPage)
+          newState.flatListData = [...flatListData, ...results[0]]
+          newState.endOfResultsReached = newState.flatListData.length >= results[1]
+          newState.flatListDataTotalCount = results[1]
+        } else if (selectedSubCategory) {
+          const results = await this._queryMediaRefsByCategory(selectedSubCategory, querySort, queryPage)
+          newState.flatListData = [...flatListData, ...results[0]]
+          newState.endOfResultsReached = newState.flatListData.length >= results[1]
+          newState.flatListDataTotalCount = results[1]
+          newState.selectedSubCategory = selectedSubCategory || PV.Filters._allCategoriesKey
+        } else {
+          const podcastResults = await this._queryAllMediaRefs(querySort, queryPage)
+          newState.flatListData = [...flatListData, ...podcastResults[0]]
+          newState.endOfResultsReached = newState.flatListData.length >= podcastResults[1]
+          newState.flatListDataTotalCount = podcastResults[1]
+        }
+      } else if (PV.FilterOptions.screenFilters.ClipsScreen.sort.some((option) => option === filterKey)) {
         const results = await getMediaRefs(
           {
-            ...(queryFrom === _subscribedKey ? { podcastId } : {}),
+            ...setCategoryQueryProperty(queryFrom, selectedCategory, selectedSubCategory),
+            ...(queryFrom === PV.Filters._subscribedKey ? { podcastId } : {}),
             sort: filterKey,
             ...(searchAllFieldsText ? { searchAllFieldsText } : {}),
-            subscribedOnly: queryFrom === _subscribedKey,
+            subscribedOnly: queryFrom === PV.Filters._subscribedKey,
             includePodcast: true
           },
           nsfwMode
         )
+        newState.flatListData = results[0]
+        newState.endOfResultsReached = newState.flatListData.length >= results[1]
+        newState.flatListDataTotalCount = results[1]
+      } else {
+        const { isSubCategory } = queryOptions
+        let categories
+        if (isSubCategory) {
+          categories = filterKey === PV.Filters._allCategoriesKey ? selectedCategory : filterKey
+        } else if (filterKey === PV.Filters._allCategoriesKey) {
+          newState.selectedCategory = PV.Filters._allCategoriesKey
+        } else {
+          categories = filterKey
+          newState.selectedSubCategory = PV.Filters._allCategoriesKey
+          newState.selectedCategory = filterKey
+        }
+
+        const results = await this._queryMediaRefsByCategory(categories, querySort, queryPage)
         newState.flatListData = results[0]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
@@ -510,71 +605,37 @@ export class ClipsScreen extends React.Component<Props, State> {
       return newState
     }
   }
-}
 
-const _subscribedKey = 'subscribed'
-const _downloadedKey = 'downloaded'
-const _allPodcastsKey = 'allPodcasts'
-const _myClipsKey = 'myClips'
-const _mostRecentKey = 'most-recent'
-const _randomKey = 'random'
-const _topPastDay = 'top-past-day'
-const _topPastWeek = 'top-past-week'
-const _topPastMonth = 'top-past-month'
-const _topPastYear = 'top-past-year'
+  _queryAllMediaRefs = async (sort: string | null, page: number = 1) => {
+    const { searchBarText: searchAllFieldsText } = this.state
+    const results = await getMediaRefs(
+      {
+        sort,
+        page,
+        ...(searchAllFieldsText ? { searchAllFieldsText } : {}),
+        includePodcast: true
+      },
+      this.global.settings.nsfwMode
+    )
 
-const leftItems = (isLoggedIn: boolean) => {
-  const items = [
-    {
-      label: 'Subscribed',
-      value: _subscribedKey
-    },
-    {
-      label: 'Downloaded',
-      value: _downloadedKey
-    },
-    {
-      label: 'All Podcasts',
-      value: _allPodcastsKey
-    }
-  ]
-
-  if (isLoggedIn) {
-    items.push({
-      label: 'My Clips',
-      value: _myClipsKey
-    })
+    return results
   }
 
-  return items
-}
-
-const rightItems = [
-  {
-    label: 'most recent',
-    value: _mostRecentKey
-  },
-  {
-    label: 'top - past day',
-    value: _topPastDay
-  },
-  {
-    label: 'top - past week',
-    value: _topPastWeek
-  },
-  {
-    label: 'top - past month',
-    value: _topPastMonth
-  },
-  {
-    label: 'top - past year',
-    value: _topPastYear
-  },
-  {
-    label: 'random',
-    value: _randomKey
+  _queryMediaRefsByCategory = async (categoryId?: string | null, sort?: string | null, page: number = 1) => {
+    const { searchBarText: searchAllFieldsText } = this.state
+    const results = await getMediaRefs(
+      {
+        categories: categoryId,
+        sort,
+        page,
+        ...(searchAllFieldsText ? { searchAllFieldsText } : {}),
+        includePodcast: true
+      },
+      this.global.settings.nsfwMode
+    )
+    return results
   }
-]
+}
 
 const styles = {
   view: {

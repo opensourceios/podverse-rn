@@ -6,7 +6,6 @@ import {
   NowPlayingItem
 } from '../../lib/NowPlayingItem'
 import { PV } from '../../resources'
-import { getAdjacentItemFromHistoryLocally } from '../../services/history'
 import {
   clearNowPlayingItem as clearNowPlayingItemService,
   getContinuousPlaybackMode,
@@ -147,24 +146,6 @@ export const initPlayerState = async (globalState: any) => {
         isActive: false,
         timeRemaining: sleepTimerDefaultTimeRemaining
       }
-    }
-  })
-}
-
-export const loadAdjacentItemFromHistory = async (shouldStartPlayback: boolean, playNext?: boolean) => {
-  const newItemFromHistory = await getAdjacentItemFromHistoryLocally(playNext)
-
-  if (newItemFromHistory) {
-    await updatePlayerState(newItemFromHistory)
-    const skipUpdateHistory = true
-    await loadItemAndPlayTrackService(newItemFromHistory, shouldStartPlayback, skipUpdateHistory)
-  }
-
-  const globalState = getGlobal()
-  setGlobal({
-    screenPlayer: {
-      ...globalState.screenPlayer,
-      isLoading: false
     }
   })
 }

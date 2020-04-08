@@ -17,9 +17,8 @@ import {
 } from '../components'
 import { getDownloadedPodcasts } from '../lib/downloadedPodcast'
 import { alertIfNoNetworkConnection, hasValidNetworkConnection } from '../lib/network'
-import { generateCategoryItems, isOdd } from '../lib/utility'
+import { isOdd, setCategoryQueryProperty } from '../lib/utility'
 import { PV } from '../resources'
-import { getCategoryById, getTopLevelCategories } from '../services/category'
 import { getEpisode } from '../services/episode'
 import { gaTrackPageView } from '../services/googleAnalytics'
 import {
@@ -45,7 +44,6 @@ type Props = {
 }
 
 type State = {
-  categoryItems: any[]
   endOfResultsReached: boolean
   flatListData: any[]
   flatListDataTotalCount: number | null
@@ -61,7 +59,6 @@ type State = {
   selectedSubCategory: string | null
   showDataSettingsConfirmDialog: boolean
   showNoInternetConnectionMessage?: boolean
-  subCategoryItems: any[]
 }
 
 // isInitialLoad is used to prevent rendering the PodcastsScreen components until
@@ -77,7 +74,6 @@ export class PodcastsScreen extends React.Component<Props, State> {
     super(props)
 
     this.state = {
-      categoryItems: [],
       endOfResultsReached: false,
       flatListData: [],
       flatListDataTotalCount: null,
@@ -89,10 +85,9 @@ export class PodcastsScreen extends React.Component<Props, State> {
       queryPage: 1,
       querySort: null,
       searchBarText: '',
-      selectedCategory: null,
-      selectedSubCategory: null,
-      showDataSettingsConfirmDialog: false,
-      subCategoryItems: []
+      selectedCategory: PV.Filters._allCategoriesKey,
+      selectedSubCategory: PV.Filters._allCategoriesKey,
+      showDataSettingsConfirmDialog: false
     }
 
     this._handleSearchBarTextQuery = debounce(this._handleSearchBarTextQuery, PV.SearchBar.textInputDebounceTime)
@@ -259,9 +254,9 @@ export class PodcastsScreen extends React.Component<Props, State> {
 
     const { subscribedPodcastIds } = this.global.session.userInfo
     if (subscribedPodcastIds && subscribedPodcastIds.length > 0) {
-      this.selectLeftItem(_subscribedKey, _alphabeticalKey)
+      this.selectLeftItem(PV.Filters._subscribedKey, PV.Filters._alphabeticalKey)
     } else {
-      this.selectLeftItem(_allPodcastsKey, _topPastWeek)
+      this.selectLeftItem(PV.Filters._allPodcastsKey, PV.Filters._topPastWeek)
     }
 
     await initDownloads()
@@ -278,7 +273,11 @@ export class PodcastsScreen extends React.Component<Props, State> {
     }
 
     const { querySort } = this.state
-    let sort = !querySort || querySort === _alphabeticalKey || querySort === _mostRecentKey ? _topPastWeek : querySort
+    let sort =
+      !querySort || querySort === PV.Filters._alphabeticalKey || querySort === PV.Filters._mostRecentKey
+        ? PV.Filters._topPastWeek
+        : querySort
+
     if (querySortOverride) {
       sort = querySortOverride
     }
@@ -338,9 +337,9 @@ export class PodcastsScreen extends React.Component<Props, State> {
         endOfResultsReached: false,
         isLoading: true,
         ...((isSubCategory ? { selectedSubCategory: selectedKey } : { selectedCategory: selectedKey }) as any),
-        ...(!isSubCategory ? { subCategoryItems: [] } : {}),
         flatListData: [],
-        flatListDataTotalCount: null
+        flatListDataTotalCount: null,
+        queryPage: 1
       },
       async () => {
         const newState = await this._queryData(selectedKey, this.state, {}, { isSubCategory })
@@ -352,7 +351,7 @@ export class PodcastsScreen extends React.Component<Props, State> {
   _onEndReached = (evt: any) => {
     const { distanceFromEnd } = evt
     const { endOfResultsReached, isLoadingMore, queryFrom, queryPage = 1 } = this.state
-    if (queryFrom !== _subscribedKey && !endOfResultsReached && !isLoadingMore) {
+    if (queryFrom !== PV.Filters._subscribedKey && !endOfResultsReached && !isLoadingMore) {
       if (distanceFromEnd > -1) {
         this.setState(
           {
@@ -362,7 +361,7 @@ export class PodcastsScreen extends React.Component<Props, State> {
             const nextPage = queryPage + 1
             const newState = await this._queryData(queryFrom, this.state, {
               queryPage: nextPage,
-              searchAllFieldsText: this.state.searchBarText
+              searchTitle: this.state.searchBarText
             })
             this.setState(newState)
           }
@@ -409,8 +408,8 @@ export class PodcastsScreen extends React.Component<Props, State> {
   _renderPodcastItem = ({ item, index }) => {
     const { downloadedPodcastEpisodeCounts } = this.global
     // const userLocalPodcastView =
-    //   this.state.queryFrom === _subscribedKey ||
-    //   this.state.queryFrom === _downloadedKey
+    //   this.state.queryFrom === PV.Filters._subscribedKey ||
+    //   this.state.queryFrom === PV.Filters._downloadedKey
     const episodeCount = downloadedPodcastEpisodeCounts[item.id]
 
     return (
@@ -441,7 +440,7 @@ export class PodcastsScreen extends React.Component<Props, State> {
 
   _renderHiddenItem = ({ item }, rowMap) => {
     const { queryFrom } = this.state
-    const buttonText = queryFrom === _downloadedKey ? 'Delete' : 'Unsubscribe'
+    const buttonText = queryFrom === PV.Filters._downloadedKey ? 'Delete' : 'Unsubscribe'
 
     return (
       <SwipeRowBack
@@ -456,7 +455,7 @@ export class PodcastsScreen extends React.Component<Props, State> {
     const { queryFrom } = this.state
 
     let wasAlerted = false
-    if (queryFrom === _subscribedKey) {
+    if (queryFrom === PV.Filters._subscribedKey) {
       wasAlerted = await alertIfNoNetworkConnection('unsubscribe from podcast')
     }
 
@@ -465,14 +464,14 @@ export class PodcastsScreen extends React.Component<Props, State> {
       try {
         const { flatListData } = this.state
 
-        if (queryFrom === _subscribedKey) {
+        if (queryFrom === PV.Filters._subscribedKey) {
           if (selectedId) {
             await toggleSubscribeToPodcast(selectedId)
           } else {
             await removeAddByRSSPodcast(addByRSSPodcastFeedUrl)
           }
           await removeDownloadedPodcast(selectedId || addByRSSPodcastFeedUrl)
-        } else if (queryFrom === _downloadedKey) {
+        } else if (queryFrom === PV.Filters._downloadedKey) {
           await removeDownloadedPodcast(selectedId || addByRSSPodcastFeedUrl)
         }
         const newFlatListData = flatListData.filter((x) => x.id !== selectedId)
@@ -546,7 +545,6 @@ export class PodcastsScreen extends React.Component<Props, State> {
   render() {
     const { navigation } = this.props
     const {
-      categoryItems,
       isLoading,
       isLoadingMore,
       isRefreshing,
@@ -555,24 +553,21 @@ export class PodcastsScreen extends React.Component<Props, State> {
       selectedCategory,
       selectedSubCategory,
       showDataSettingsConfirmDialog,
-      showNoInternetConnectionMessage,
-      subCategoryItems
+      showNoInternetConnectionMessage
     } = this.state
 
     let flatListData = []
     let flatListDataTotalCount = null
-    if (queryFrom === _subscribedKey) {
+    if (queryFrom === PV.Filters._subscribedKey) {
       flatListData = this.global.subscribedPodcasts
       flatListDataTotalCount = this.global.subscribedPodcastsTotalCount
-    } else if (queryFrom === _downloadedKey) {
+    } else if (queryFrom === PV.Filters._downloadedKey) {
       flatListData = this.global.downloadedPodcasts
       flatListDataTotalCount = this.global.downloadedPodcasts && this.global.downloadedPodcasts.length
     } else {
       flatListData = this.state.flatListData
       flatListDataTotalCount = this.state.flatListDataTotalCount
     }
-
-    const rItems = rightItems(queryFrom === _allPodcastsKey)
 
     return (
       <View style={styles.view}>
@@ -581,21 +576,19 @@ export class PodcastsScreen extends React.Component<Props, State> {
           handleSelectLeftItem={(selectedKey: string) => this.selectLeftItem(selectedKey)}
           handleSelectRightItem={(selectedKey: string) => this.selectRightItem(selectedKey)}
           hidePickers={isInitialLoad}
-          leftItems={leftItems}
-          rightItems={!queryFrom || queryFrom === _subscribedKey || queryFrom === _downloadedKey ? [] : rItems}
           selectedLeftItemKey={queryFrom}
           selectedRightItemKey={querySort}
+          screenName='PodcastsScreen'
         />
-        {queryFrom === _categoryKey && categoryItems && (
+        {queryFrom === PV.Filters._categoryKey && (
           <TableSectionSelectors
             handleSelectLeftItem={(x: string) => this._selectCategory(x)}
             handleSelectRightItem={(x: string) => this._selectCategory(x, true)}
-            leftItems={categoryItems}
-            placeholderLeft={{ label: 'All', value: _allCategoriesKey }}
-            placeholderRight={{ label: 'All', value: _allCategoriesKey }}
-            rightItems={subCategoryItems}
             selectedLeftItemKey={selectedCategory}
             selectedRightItemKey={selectedSubCategory}
+            isBottomBar={true}
+            isCategories={true}
+            screenName='PodcastsScreen'
           />
         )}
         {isLoading && <ActivityIndicator />}
@@ -603,18 +596,22 @@ export class PodcastsScreen extends React.Component<Props, State> {
           <FlatList
             data={flatListData}
             dataTotalCount={flatListDataTotalCount}
-            disableLeftSwipe={queryFrom !== _subscribedKey && queryFrom !== _downloadedKey}
+            disableLeftSwipe={queryFrom !== PV.Filters._subscribedKey && queryFrom !== PV.Filters._downloadedKey}
             extraData={flatListData}
             handleSearchNavigation={this._handleSearchNavigation}
             isLoadingMore={isLoadingMore}
             isRefreshing={isRefreshing}
             ItemSeparatorComponent={this._ItemSeparatorComponent}
             ListHeaderComponent={
-              queryFrom !== _subscribedKey && queryFrom !== _downloadedKey ? this._ListHeaderComponent : null
+              queryFrom !== PV.Filters._subscribedKey && queryFrom !== PV.Filters._downloadedKey
+                ? this._ListHeaderComponent
+                : null
             }
-            noSubscribedPodcasts={queryFrom === _subscribedKey && (!flatListData || flatListData.length === 0)}
+            noSubscribedPodcasts={
+              queryFrom === PV.Filters._subscribedKey && (!flatListData || flatListData.length === 0)
+            }
             onEndReached={this._onEndReached}
-            onRefresh={queryFrom === _subscribedKey ? this._onRefresh : null}
+            onRefresh={queryFrom === PV.Filters._subscribedKey ? this._onRefresh : null}
             renderHiddenItem={this._renderHiddenItem}
             renderItem={this._renderPodcastItem}
             resultsText='podcasts'
@@ -644,8 +641,6 @@ export class PodcastsScreen extends React.Component<Props, State> {
       {
         sort,
         page,
-        includeAuthors: true,
-        includeCategories: true,
         ...(searchTitle ? { searchTitle } : {})
       },
       this.global.settings.nsfwMode
@@ -653,14 +648,13 @@ export class PodcastsScreen extends React.Component<Props, State> {
     return results
   }
 
-  _queryPodcastsByCategory = async (categoryId: string | null, sort: string | null, page: number = 1) => {
+  _queryPodcastsByCategory = async (categoryId?: string | null, sort?: string | null, page: number = 1) => {
     const { searchBarText: searchTitle } = this.state
     const results = await getPodcasts(
       {
         categories: categoryId,
         sort,
         page,
-        includeAuthors: true,
         ...(searchTitle ? { searchTitle } : {})
       },
       this.global.settings.nsfwMode
@@ -682,8 +676,6 @@ export class PodcastsScreen extends React.Component<Props, State> {
       ...nextState
     } as State
 
-    const rItems = rightItems(filterKey === _allPodcastsKey || this.state.queryFrom === _allPodcastsKey)
-
     try {
       const {
         searchBarText: searchTitle,
@@ -696,26 +688,25 @@ export class PodcastsScreen extends React.Component<Props, State> {
       const { nsfwMode } = settings
 
       const hasInternetConnection = await hasValidNetworkConnection()
-
-      if (filterKey === _subscribedKey) {
+      if (filterKey === PV.Filters._subscribedKey) {
         await getAuthUserInfo() // get the latest subscribedPodcastIds first
         await this._querySubscribedPodcasts()
-      } else if (filterKey === _downloadedKey) {
+      } else if (filterKey === PV.Filters._downloadedKey) {
         const podcasts = await getDownloadedPodcasts()
         newState.endOfResultsReached = true
         newState.flatListDataTotalCount = podcasts.length
-      } else if (filterKey === _allPodcastsKey) {
+      } else if (filterKey === PV.Filters._allPodcastsKey) {
         newState.showNoInternetConnectionMessage = !hasInternetConnection
 
         const results = await this._queryAllPodcasts(querySort, newState.queryPage)
         newState.flatListData = [...flatListData, ...results[0]]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
-      } else if (filterKey === _categoryKey) {
+      } else if (filterKey === PV.Filters._categoryKey) {
         newState.showNoInternetConnectionMessage = !hasInternetConnection
 
         const { querySort, selectedCategory, selectedSubCategory } = prevState
-        if (selectedCategory && selectedSubCategory === _allCategoriesKey) {
+        if (selectedCategory && selectedSubCategory === PV.Filters._allCategoriesKey) {
           const results = await this._queryPodcastsByCategory(selectedCategory, querySort, newState.queryPage)
           newState.flatListData = [...flatListData, ...results[0]]
           newState.endOfResultsReached = newState.flatListData.length >= results[1]
@@ -725,25 +716,19 @@ export class PodcastsScreen extends React.Component<Props, State> {
           newState.flatListData = [...flatListData, ...results[0]]
           newState.endOfResultsReached = newState.flatListData.length >= results[1]
           newState.flatListDataTotalCount = results[1]
-          newState.selectedSubCategory = selectedSubCategory || _allCategoriesKey
+          newState.selectedSubCategory = selectedSubCategory || PV.Filters._allCategoriesKey
         } else {
-          const categoryResults = await getTopLevelCategories()
           const podcastResults = await this._queryAllPodcasts(querySort, newState.queryPage)
-          newState.categoryItems = generateCategoryItems(categoryResults[0])
           newState.flatListData = [...flatListData, ...podcastResults[0]]
           newState.endOfResultsReached = newState.flatListData.length >= podcastResults[1]
           newState.flatListDataTotalCount = podcastResults[1]
         }
-      } else if (rItems.some((option) => option.value === filterKey)) {
+      } else if (PV.FilterOptions.screenFilters.PodcastsScreen.sort.some((option) => option === filterKey)) {
         newState.showNoInternetConnectionMessage = !hasInternetConnection
 
         const results = await getPodcasts(
           {
-            ...(((selectedSubCategory && selectedSubCategory !== _allCategoriesKey) || selectedCategory
-              ? {
-                  categories: (selectedSubCategory && selectedSubCategory !== _allCategoriesKey) || selectedCategory
-                }
-              : {}) as object),
+            ...setCategoryQueryProperty(queryFrom, selectedCategory, selectedSubCategory),
             sort: filterKey,
             ...(searchTitle ? { searchTitle } : {})
           },
@@ -758,26 +743,16 @@ export class PodcastsScreen extends React.Component<Props, State> {
         const { isSubCategory } = queryOptions
         let categories
         if (isSubCategory) {
-          categories = filterKey === _allCategoriesKey ? selectedCategory : filterKey
-        } else if (filterKey === _allCategoriesKey) {
-          newState.selectedCategory = _allCategoriesKey
+          categories = filterKey === PV.Filters._allCategoriesKey ? selectedCategory : filterKey
+        } else if (filterKey === PV.Filters._allCategoriesKey) {
+          newState.selectedCategory = PV.Filters._allCategoriesKey
         } else {
           categories = filterKey
-          const category = await getCategoryById(filterKey || '')
-          newState.subCategoryItems = generateCategoryItems(category.categories)
-          newState.selectedSubCategory = _allCategoriesKey
+          newState.selectedSubCategory = PV.Filters._allCategoriesKey
           newState.selectedCategory = filterKey
         }
 
-        const results = await getPodcasts(
-          {
-            categories,
-            sort: querySort,
-            includeAuthors: true,
-            ...(searchTitle ? { searchTitle } : {})
-          },
-          nsfwMode
-        )
+        const results = await this._queryPodcastsByCategory(categories, querySort)
         newState.flatListData = results[0]
         newState.endOfResultsReached = newState.flatListData.length >= results[1]
         newState.flatListDataTotalCount = results[1]
@@ -785,64 +760,10 @@ export class PodcastsScreen extends React.Component<Props, State> {
 
       return newState
     } catch (error) {
+      console.log('PodcastsScreen _queryData error', error)
       return newState
     }
   }
-}
-
-const _subscribedKey = 'subscribed'
-const _downloadedKey = 'downloaded'
-const _allPodcastsKey = 'allPodcasts'
-const _categoryKey = 'category'
-const _allCategoriesKey = 'allCategories'
-const _alphabeticalKey = 'alphabetical'
-const _mostRecentKey = 'most-recent'
-const _randomKey = 'random'
-const _topPastDay = 'top-past-day'
-const _topPastWeek = 'top-past-week'
-const _topPastMonth = 'top-past-month'
-const _topPastYear = 'top-past-year'
-
-const leftItems = [
-  {
-    label: 'Subscribed',
-    value: _subscribedKey
-  },
-  {
-    label: 'Downloaded',
-    value: _downloadedKey
-  },
-  {
-    label: 'All Podcasts',
-    value: _allPodcastsKey
-  },
-  {
-    label: 'Category',
-    value: _categoryKey
-  }
-]
-
-const rightItems = (isAllPodcasts?: boolean, isCategories?: boolean) => {
-  const items = [
-    {
-      label: 'top - past day',
-      value: _topPastDay
-    },
-    {
-      label: 'top - past week',
-      value: _topPastWeek
-    },
-    {
-      label: 'top - past month',
-      value: _topPastMonth
-    },
-    {
-      label: 'top - past year',
-      value: _topPastYear
-    }
-  ]
-
-  return items
 }
 
 const styles = StyleSheet.create({
