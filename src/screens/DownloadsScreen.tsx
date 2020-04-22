@@ -17,8 +17,10 @@ type State = {
 }
 
 export class DownloadsScreen extends React.Component<Props, State> {
-  static navigationOptions = {
-    title: 'Downloads'
+  static navigationOptions = ({ navigation }) => {
+    return {
+      title: 'Downloads'
+    }
   }
 
   constructor() {
@@ -104,8 +106,8 @@ export class DownloadsScreen extends React.Component<Props, State> {
             dataTotalCount={downloadsArray.length}
             disableLeftSwipe={false}
             extraData={downloadsArray}
-            ItemSeparatorComponent={this._ItemSeparatorComponent}
             keyExtractor={(item: any) => item.episodeId}
+            ItemSeparatorComponent={this._ItemSeparatorComponent}
             renderHiddenItem={this._renderHiddenItem}
             renderItem={this._renderItem}
           />

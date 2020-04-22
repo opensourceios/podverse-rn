@@ -5,9 +5,10 @@ import Share from 'react-native-share'
 import { getGlobal } from 'reactn'
 import { safelyUnwrapNestedVariable } from '../lib/utility'
 import { IActionSheet } from '../resources/Interfaces'
-import { addItemToPlayerQueueLast, addItemToPlayerQueueNext, PVTrackPlayer } from '../services/player'
+import { PVTrackPlayer } from '../services/player'
 import { removeDownloadedPodcastEpisode } from '../state/actions/downloads'
 import { loadItemAndPlayTrack } from '../state/actions/player'
+import { addQueueItemLast, addQueueItemNext } from '../state/actions/queue'
 import { PV } from './PV'
 
 const mediaMoreButtons = (
@@ -15,7 +16,8 @@ const mediaMoreButtons = (
   navigation: any,
   handleDismiss: any,
   handleDownload: any,
-  handleDeleteClip: any
+  handleDeleteClip: any,
+  includeGoToPodcast?: boolean
 ) => {
   if (!item || !item.episodeId) return
 
@@ -25,6 +27,8 @@ const mediaMoreButtons = (
   const isDownloaded = globalState.downloadedEpisodeIds[item.episodeId]
   const buttons = []
   const loggedInUserId = safelyUnwrapNestedVariable(() => globalState.session.userInfo.id, '')
+  const isLoggedIn = safelyUnwrapNestedVariable(() => globalState.session.isLoggedIn, '')
+  const globalTheme = safelyUnwrapNestedVariable(() => globalState.globalTheme, {})
 
   if (item.ownerId && item.ownerId === loggedInUserId) {
     buttons.push(
@@ -32,16 +36,20 @@ const mediaMoreButtons = (
         key: 'editClip',
         text: 'Edit Clip',
         onPress: async () => {
+          const { darkTheme } = require('../styles')
+          const isDarkMode = globalState.globalTheme === darkTheme
           await handleDismiss()
           const shouldPlay = false
           await loadItemAndPlayTrack(item, shouldPlay)
-          await navigation.navigate(PV.RouteNames.PlayerScreen)
+          await navigation.navigate(PV.RouteNames.PlayerScreen, { isDarkMode })
           setTimeout(async () => {
             const initialProgressValue = await PVTrackPlayer.getPosition()
             navigation.navigate(PV.RouteNames.MakeClipScreen, {
               initialProgressValue,
               initialPrivacy: item.isPublic,
-              isEditing: true
+              isEditing: true,
+              isLoggedIn,
+              globalTheme
             })
           }, 1000)
         }
@@ -107,7 +115,7 @@ const mediaMoreButtons = (
       key: 'queueNext',
       text: 'Queue: Next',
       onPress: async () => {
-        await addItemToPlayerQueueNext(item)
+        await addQueueItemNext(item)
         await handleDismiss()
       }
     },
@@ -115,7 +123,7 @@ const mediaMoreButtons = (
       key: 'queueLast',
       text: 'Queue: Last',
       onPress: async () => {
-        await addItemToPlayerQueueLast(item)
+        await addQueueItemLast(item)
         await handleDismiss()
       }
     }
@@ -154,7 +162,7 @@ const mediaMoreButtons = (
             url
           })
         } catch (error) {
-          alert(error.message)
+          console.log(error)
         }
         await handleDismiss()
       }
@@ -172,7 +180,7 @@ const mediaMoreButtons = (
     })
   }
 
-  if (navigation.getParam('includeGoToPodcast')) {
+  if (includeGoToPodcast) {
     buttons.push({
       key: 'goToPodcast',
       text: 'Go to Podcast',

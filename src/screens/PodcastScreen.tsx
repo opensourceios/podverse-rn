@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-community/async-storage'
 import debounce from 'lodash/debounce'
 import { View as RNView } from 'react-native'
-import { NavigationScreenOptions } from 'react-navigation'
+import { NavigationStackOptions } from 'react-navigation-stack'
 import React from 'reactn'
 import {
   ActionSheet,
@@ -11,7 +11,7 @@ import {
   EpisodeTableCell,
   FlatList,
   HTMLScrollView,
-  NavQueueIcon,
+  NavSearchIcon,
   NavShareIcon,
   NumberSelectorWithText,
   PodcastTableHeader,
@@ -83,10 +83,10 @@ export class PodcastScreen extends React.Component<Props, State> {
               url={PV.URLs.podcast + podcastId}
             />
           )}
-          <NavQueueIcon navigation={navigation} />
+          <NavSearchIcon navigation={navigation} />
         </RNView>
       )
-    } as NavigationScreenOptions
+    } as NavigationStackOptions
   }
 
   constructor(props: Props) {
@@ -622,6 +622,7 @@ export class PodcastScreen extends React.Component<Props, State> {
                 isLoadingMore={isLoadingMore}
                 isRefreshing={isRefreshing}
                 ItemSeparatorComponent={this._ItemSeparatorComponent}
+                keyExtractor={(item: any) => item.id}
                 ListHeaderComponent={
                   viewType === PV.Filters._episodesKey || viewType === PV.Filters._clipsKey
                     ? this._ListHeaderComponent

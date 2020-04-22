@@ -17,8 +17,10 @@ type State = {
 }
 
 export class MoreScreen extends React.Component<Props, State> {
-  static navigationOptions = {
-    title: 'More'
+  static navigationOptions = ({ navigation }) => {
+    return {
+      title: 'More'
+    }
   }
 
   state = {

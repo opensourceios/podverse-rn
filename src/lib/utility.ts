@@ -116,6 +116,12 @@ export const removeHTMLAttributesFromString = (html: string) => {
   return $.html()
 }
 
+export const filterHTMLElementsFromString = (html: string) => {
+  let finalHtml = html
+  finalHtml = finalHtml.replace(/<audio.*>.*?<\/audio>|<video.*>.*?<\/video>|<img.*>.*?<\/img>|<img.*>/gi, '')
+  return finalHtml
+}
+
 export const formatTitleViewHtml = (episode: any) => {
   if (episode.podcast && episode.podcast.title && episode.title && episode.pubDate) {
     return `<p>${episode.podcast.title}</p><p>${episode.title}</p><p>${readableDate(episode.pubDate)}</p>`
@@ -307,7 +313,7 @@ export const checkIfIdMatchesClipIdOrEpisodeId = (
   addByRSSPodcastFeedUrl?: string
 ) => {
   return (
-    id === clipId ||
+    (clipId && id === clipId) ||
     (!clipId && addByRSSPodcastFeedUrl && id === addByRSSPodcastFeedUrl) ||
     (!clipId && episodeId && id === episodeId)
   )
@@ -456,4 +462,17 @@ export const setCategoryQueryProperty = (queryFrom?: any, selectedCategory?: any
   } else {
     return {}
   }
+}
+
+export const isValidUrl = (str?: string) => {
+  if (!str) return false
+
+  try {
+    // tslint:disable-next-line:no-unused-expression
+    new URL(str)
+  } catch (_) {
+    return false
+  }
+
+  return true
 }

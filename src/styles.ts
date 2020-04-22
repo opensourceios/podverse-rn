@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
 import { PV } from './resources'
 
 export const darkTheme = StyleSheet.create({
@@ -168,7 +168,7 @@ export const darkTheme = StyleSheet.create({
     tintColor: PV.Colors.blue
   },
   tabbarLabel: {
-    color: PV.Colors.grayLighter
+    color: PV.Colors.white
   },
   tableCellBorder: {
     borderColor: PV.Colors.grayDarker
@@ -455,7 +455,8 @@ export const lightTheme = StyleSheet.create({
 export const tabbar = StyleSheet.create({
   label: {
     fontSize: PV.Fonts.sizes.tiny,
-    textAlign: 'center'
+    textAlign: 'center',
+    color: PV.Colors.white
   }
 })
 
@@ -514,6 +515,12 @@ export const core = StyleSheet.create({
   buttonText: {
     fontSize: PV.Fonts.sizes.xl,
     fontWeight: PV.Fonts.weights.bold,
+    textAlign: 'center'
+  },
+  buttonTextLink: {
+    fontSize: PV.Fonts.sizes.xl,
+    marginVertical: 12,
+    paddingVertical: 12,
     textAlign: 'center'
   },
   closeButton: {
@@ -607,19 +614,29 @@ export const hidePickerIconOnAndroidTransparent = (isDarkMode: boolean) => {
 
 export const navHeader = StyleSheet.create({
   buttonIcon: {
-    color: PV.Colors.white,
-    flex: 0
+    flex: 0,
+    textAlign: 'center',
+    width: 28
   },
   buttonText: {
     color: PV.Colors.white,
-    fontSize: PV.Fonts.sizes.md,
-    textAlign: 'right'
+    fontSize: PV.Fonts.sizes.lg,
+    height: Platform.OS === 'android' ? PV.Navigation.header.height.android - 4 : PV.Navigation.header.height.ios - 4,
+    lineHeight:
+      Platform.OS === 'android' ? PV.Navigation.header.height.android - 10 : PV.Navigation.header.height.ios - 4,
+    marginLeft: 16,
+    marginRight: 16
   },
   buttonWrapper: {
-    alignSelf: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8
+  },
+  headerHeight: {
+    paddingTop: Platform.select({
+      android: PV.Navigation.header.height.android,
+      ios: PV.Navigation.header.height.ios
+    })
   }
 })
 

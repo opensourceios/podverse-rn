@@ -1,5 +1,5 @@
 import { Platform, StyleSheet, TouchableWithoutFeedback } from 'react-native'
-import React, { getGlobal } from 'reactn'
+import React, { useGlobal } from 'reactn'
 import { readableDate } from '../lib/utility'
 import { PV } from '../resources'
 import { core } from '../styles'
@@ -13,7 +13,7 @@ type Props = {
 
 export const PlayerTableHeader = (props: Props) => {
   const { isLoading, nowPlayingItem, onPress } = props
-  const { fontScaleMode } = getGlobal()
+  const [fontScaleMode] = useGlobal('fontScaleMode')
 
   const episodeTitleNumberOfLines = PV.Fonts.fontScale.largest === fontScaleMode ? 1 : 2
 
@@ -29,20 +29,20 @@ export const PlayerTableHeader = (props: Props) => {
 
   return (
     <TouchableWithoutFeedback onPress={onPress}>
-      <View style={styles.wrapper}>
+      <View style={styles.wrapper} transparent={true}>
         {isLoading && (
           <View style={core.row}>
             <ActivityIndicator />
           </View>
         )}
         {!isLoading && !!nowPlayingItem && (
-          <View style={core.row}>
+          <View style={core.row} transparent={true}>
             <FastImage
               key={nowPlayingItem.podcastImageUrl}
               source={nowPlayingItem.podcastImageUrl}
               styles={styles.image}
             />
-            <View style={textWrapperStyle}>
+            <View style={textWrapperStyle} transparent={true}>
               {fontScaleMode !== PV.Fonts.fontScale.largest && (
                 <Text
                   fontSizeLargestScale={PV.Fonts.largeSizes.sm}

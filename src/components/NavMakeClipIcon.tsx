@@ -1,12 +1,14 @@
-import React from 'react'
-import { getMakeClipIsPublic } from '../lib/utility'
+import React, { getGlobal } from 'reactn'
+import { GlobalTheme } from '../../src/resources/Interfaces'
+import { darkTheme } from '../../src/styles'
+import { getMakeClipIsPublic, safelyUnwrapNestedVariable } from '../lib/utility'
 import { PV } from '../resources'
-import { navHeader } from '../styles'
-import { Icon, NavItemWrapper } from './'
+import { NavItemIcon, NavItemWrapper } from './'
 
 type Props = {
   getInitialProgressValue: any
   navigation: any
+  globalTheme: GlobalTheme
 }
 
 export const NavMakeClipIcon = (props: Props) => {
@@ -15,15 +17,25 @@ export const NavMakeClipIcon = (props: Props) => {
   const handlePress = async () => {
     const initialProgressValue = await getInitialProgressValue()
     const isPublic = await getMakeClipIsPublic()
+    const { globalTheme, session } = getGlobal()
+    const isLoggedIn = safelyUnwrapNestedVariable(() => session.isLoggedIn, false)
+
     navigation.navigate(PV.RouteNames.MakeClipScreen, {
       initialProgressValue,
-      initialPrivacy: isPublic
+      initialPrivacy: isPublic,
+      isLoggedIn,
+      globalTheme
     })
+  }
+
+  let color = darkTheme.text.color
+  if (props.globalTheme) {
+    color = props.globalTheme?.text?.color
   }
 
   return (
     <NavItemWrapper handlePress={handlePress}>
-      <Icon color='#fff' name='cut' size={PV.Icons.NAV} style={navHeader.buttonIcon} />
+      <NavItemIcon name='cut' color={color} />
     </NavItemWrapper>
   )
 }

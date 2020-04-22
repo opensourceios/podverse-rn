@@ -14,14 +14,14 @@ export const Tabs = {
     icon: require('./images/tab-clips.png'),
     index: 2
   },
-  Search: {
-    title: 'Search',
-    icon: require('./images/tab-search.png'),
-    index: 3
-  },
   More: {
     title: 'More',
     icon: require('./images/tab-more.png'),
+    index: 3
+  },
+  Queue: {
+    title: 'Queue',
+    icon: require('./images/tab-queue.png'),
     index: 4
   }
 }

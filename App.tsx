@@ -21,7 +21,7 @@ import { darkTheme, lightTheme } from './src/styles'
 
 YellowBox.ignoreWarnings(['Warning: componentWillUpdate'])
 
-// console.disableYellowBox = true
+console.disableYellowBox = true
 
 type Props = {}
 
@@ -38,8 +38,6 @@ class App extends Component<Props, State> {
 
   constructor(props: Props) {
     super(props)
-    StatusBar.setBarStyle('light-content')
-    Platform.OS === 'android' && StatusBar.setBackgroundColor(PV.Colors.brandColor)
     this.state = {
       appReady: false
     }
@@ -50,6 +48,7 @@ class App extends Component<Props, State> {
   async componentDidMount() {
     TrackPlayer.registerPlaybackService(() => require('./src/services/playerEvents'))
     const darkModeEnabled = await AsyncStorage.getItem(PV.Keys.DARK_MODE_ENABLED)
+    StatusBar.setBarStyle('light-content')
     await this.setupGlobalState(darkModeEnabled === 'TRUE' || darkModeEnabled === null ? darkTheme : lightTheme)
     this.unsubscribeNetListener = NetInfo.addEventListener(this.handleNetworkChange)
     await gaInitialize()
@@ -106,6 +105,10 @@ class App extends Component<Props, State> {
   }
 
   _renderIntersitial = () => {
+    if (Platform.OS === 'ios') {
+      return null
+    }
+
     return (
       <View style={{ backgroundColor: PV.Colors.brandColor, flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Image source={PV.Images.BANNER} resizeMode='contain' />

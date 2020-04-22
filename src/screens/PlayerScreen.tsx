@@ -1,7 +1,7 @@
 import { StyleSheet, View as RNView } from 'react-native'
 import Share from 'react-native-share'
-import { NavigationScreenOptions } from 'react-navigation'
-import React, { setGlobal } from 'reactn'
+import { SafeAreaView } from 'react-navigation'
+import React, { getGlobal, setGlobal } from 'reactn'
 import {
   ActionSheet,
   ActivityIndicator,
@@ -16,10 +16,10 @@ import {
   NavMakeClipIcon,
   NavQueueIcon,
   NavShareIcon,
+  OpaqueBackground,
   PlayerClipInfoBar,
   PlayerControls,
   PlayerTableHeader,
-  SafeAreaView,
   TableSectionHeader,
   TableSectionSelectors,
   View
@@ -42,7 +42,7 @@ import { getNowPlayingItem, PVTrackPlayer } from '../services/player'
 import PlayerEventEmitter from '../services/playerEventEmitter'
 import { addQueueItemNext } from '../services/queue'
 import { loadItemAndPlayTrack } from '../state/actions/player'
-import { core } from '../styles'
+import { core, navHeader } from '../styles'
 
 type Props = {
   navigation?: any
@@ -61,26 +61,35 @@ export class PlayerScreen extends React.Component<Props, State> {
     const _getInitialProgressValue = navigation.getParam('_getInitialProgressValue')
     const addByRSSPodcastFeedUrl = navigation.getParam('addByRSSPodcastFeedUrl')
 
+    const { globalTheme } = getGlobal()
+
     return {
       title: '',
-      headerLeft: <NavDismissIcon handlePress={navigation.dismiss} />,
+      headerTransparent: true,
+      headerStyle: {},
+      headerLeft: <NavDismissIcon handlePress={navigation.dismiss} globalTheme={globalTheme} />,
       headerRight: (
         <RNView style={core.row}>
           {!addByRSSPodcastFeedUrl && (
             <RNView style={core.row}>
-              <NavMakeClipIcon getInitialProgressValue={_getInitialProgressValue} navigation={navigation} />
+              <NavMakeClipIcon
+                getInitialProgressValue={_getInitialProgressValue}
+                navigation={navigation}
+                globalTheme={globalTheme}
+              />
               <NavAddToPlaylistIcon
                 getEpisodeId={_getEpisodeId}
                 getMediaRefId={_getMediaRefId}
                 navigation={navigation}
+                globalTheme={globalTheme}
               />
-              <NavShareIcon handlePress={_showShareActionSheet} />
+              <NavShareIcon handlePress={_showShareActionSheet} globalTheme={globalTheme} />
             </RNView>
           )}
-          <NavQueueIcon navigation={navigation} />
+          <NavQueueIcon globalTheme={globalTheme} isTransparent={true} navigation={navigation} showBackButton={true} />
         </RNView>
       )
-    } as NavigationScreenOptions
+    }
   }
 
   constructor(props: Props) {
@@ -441,7 +450,7 @@ export class PlayerScreen extends React.Component<Props, State> {
         url
       })
     } catch (error) {
-      alert(error.message)
+      console.log(error)
     }
     this._dismissShareActionSheet()
   }
@@ -464,6 +473,7 @@ export class PlayerScreen extends React.Component<Props, State> {
     const { episode } = player
     const podcast = (episode && episode.podcast) || {}
     const { queryFrom, viewType } = screenPlayer
+
     if (viewType === PV.Filters._episodesKey) {
       let description = removeHTMLFromString(item.description)
       description = decodeHTMLString(description)
@@ -477,6 +487,7 @@ export class PlayerScreen extends React.Component<Props, State> {
           hideImage={true}
           pubDate={item.pubDate}
           title={item.title || 'untitled episode'}
+          transparent={true}
         />
       )
     } else {
@@ -502,6 +513,7 @@ export class PlayerScreen extends React.Component<Props, State> {
           hideImage={true}
           startTime={item.startTime}
           title={item.title || 'untitled clip'}
+          transparent={true}
         />
       ) : (
         <></>
@@ -539,8 +551,8 @@ export class PlayerScreen extends React.Component<Props, State> {
     const mediaRefId = mediaRef ? mediaRef.id : null
 
     return (
-      <SafeAreaView>
-        <View style={styles.view}>
+      <OpaqueBackground nowPlayingItem={nowPlayingItem}>
+        <View style={styles.view} transparent={true}>
           <PlayerTableHeader nowPlayingItem={nowPlayingItem} />
           {showFullClipInfo && (mediaRef || (nowPlayingItem && nowPlayingItem.clipId)) && (
             <ClipInfoView
@@ -558,7 +570,7 @@ export class PlayerScreen extends React.Component<Props, State> {
             />
           )}
           {!showFullClipInfo && (
-            <View style={styles.view}>
+            <View style={styles.view} transparent={true}>
               <TableSectionSelectors
                 handleSelectLeftItem={this._selectViewType}
                 handleSelectRightItem={this._selectQuerySort}
@@ -596,8 +608,10 @@ export class PlayerScreen extends React.Component<Props, State> {
                     extraData={flatListData}
                     isLoadingMore={isLoadingMore}
                     ItemSeparatorComponent={this._ItemSeparatorComponent}
+                    keyExtractor={(item: any) => item.id}
                     onEndReached={this._onEndReached}
                     renderItem={this._renderItem}
+                    transparent={true}
                   />
                 )}
               {!isLoading && viewType === PV.Filters._showNotesKey && episode && (
@@ -632,7 +646,7 @@ export class PlayerScreen extends React.Component<Props, State> {
             title='Share'
           />
         </View>
-      </SafeAreaView>
+      </OpaqueBackground>
     )
   }
 
@@ -761,11 +775,17 @@ const shareActionSheetButtons = (podcastId: string, episodeId: string, mediaRefI
 }
 
 const styles = StyleSheet.create({
+  imageBackground: {
+    flex: 1
+  },
   swipeRowBack: {
     marginBottom: 8,
     marginTop: 8
   },
   view: {
+    flex: 1
+  },
+  viewBackdrop: {
     flex: 1
   }
 })

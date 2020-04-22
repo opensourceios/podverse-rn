@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, TouchableOpacity, View as RNView } from 'react-native'
+import { Alert, StatusBar, StyleSheet, View as RNView } from 'react-native'
 import Dialog from 'react-native-dialog'
 import React from 'reactn'
 import {
@@ -170,6 +170,7 @@ export class PlaylistsAddToScreen extends React.Component<Props, State> {
                 disableLeftSwipe={true}
                 extraData={myPlaylists}
                 ItemSeparatorComponent={this._ItemSeparatorComponent}
+                keyExtractor={(item: any, index: number) => `myPlaylists_${index}`}
                 renderItem={this._renderPlaylistItem}
               />
             )}
@@ -180,6 +181,7 @@ export class PlaylistsAddToScreen extends React.Component<Props, State> {
                 disableLeftSwipe={true}
                 extraData={myPlaylists}
                 ItemSeparatorComponent={this._ItemSeparatorComponent}
+                keyExtractor={(item: any, index: number) => `myPlaylists2_${index}`}
                 renderItem={this._renderPlaylistItem}
               />
             )}

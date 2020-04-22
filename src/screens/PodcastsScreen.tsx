@@ -22,6 +22,7 @@ import { PV } from '../resources'
 import { getEpisode } from '../services/episode'
 import { gaTrackPageView } from '../services/googleAnalytics'
 import {
+  checkIdlePlayerState,
   getNowPlayingItemFromQueueOrHistoryByTrackId,
   PVTrackPlayer,
   updateUserPlaybackPosition
@@ -37,7 +38,7 @@ import {
   updatePlayerState
 } from '../state/actions/player'
 import { getSubscribedPodcasts, removeAddByRSSPodcast, toggleSubscribeToPodcast } from '../state/actions/podcast'
-import { core } from '../styles'
+import { core, darkTheme } from '../styles'
 
 type Props = {
   navigation?: any
@@ -142,6 +143,16 @@ export class PodcastsScreen extends React.Component<Props, State> {
       }
 
       await updatePlaybackState()
+
+      // NOTE: On iOS, when returning to the app from the background while the player was paused,
+      // sometimes the player will be in an idle state, requiring the user to press play twice to
+      // reload the item in the player and begin playing. By calling initializePlayerQueue once whenever
+      // the idle playback-state event is called, it automatically reloads the item.
+      // I don't think this issue is happening on Android, so we're not using this workaround on Android.
+      const isIdle = await checkIdlePlayerState()
+      if (Platform.OS === 'ios' && isIdle) {
+        await initializePlayerQueue()
+      }
     }
 
     if (nextAppState === 'background' || nextAppState === 'inactive') {
@@ -187,6 +198,7 @@ export class PodcastsScreen extends React.Component<Props, State> {
   _handleOpenURL = async (url: string) => {
     const { navigation } = this.props
     const { navigate } = navigation
+    const isDarkMode = this.global.globalTheme === darkTheme
 
     try {
       if (url) {
@@ -201,7 +213,10 @@ export class PodcastsScreen extends React.Component<Props, State> {
         await this._goBackWithDelay()
 
         if (path === PV.DeepLinks.Clip.pathPrefix) {
-          await navigate(PV.RouteNames.PlayerScreen, { mediaRefId: id })
+          await navigate(PV.RouteNames.PlayerScreen, {
+            mediaRefId: id,
+            isDarkMode
+          })
         } else if (path === PV.DeepLinks.Episode.pathPrefix) {
           const episode = await getEpisode(id)
           if (episode) {
@@ -407,9 +422,6 @@ export class PodcastsScreen extends React.Component<Props, State> {
 
   _renderPodcastItem = ({ item, index }) => {
     const { downloadedPodcastEpisodeCounts } = this.global
-    // const userLocalPodcastView =
-    //   this.state.queryFrom === PV.Filters._subscribedKey ||
-    //   this.state.queryFrom === PV.Filters._downloadedKey
     const episodeCount = downloadedPodcastEpisodeCounts[item.id]
 
     return (
@@ -424,12 +436,6 @@ export class PodcastsScreen extends React.Component<Props, State> {
             addByRSSPodcastFeedUrl: item.addByRSSPodcastFeedUrl
           })
         }
-        // podcastAuthors={
-        //   userLocalPodcastView ? '' : generateAuthorsText(item.authors)
-        // }
-        // podcastCategories={
-        //   userLocalPodcastView ? '' : generateCategoriesText(item.categories)
-        // }
         podcastImageUrl={item.shrunkImageUrl || item.imageUrl}
         podcastTitle={item.title}
         showAutoDownload={true}
@@ -599,6 +605,7 @@ export class PodcastsScreen extends React.Component<Props, State> {
             disableLeftSwipe={queryFrom !== PV.Filters._subscribedKey && queryFrom !== PV.Filters._downloadedKey}
             extraData={flatListData}
             handleSearchNavigation={this._handleSearchNavigation}
+            keyExtractor={(item: any) => item.id}
             isLoadingMore={isLoadingMore}
             isRefreshing={isRefreshing}
             ItemSeparatorComponent={this._ItemSeparatorComponent}

@@ -39,7 +39,7 @@ export class PlaylistsScreen extends React.Component<Props, State> {
     this.state = {
       isLoading: isLoggedIn,
       isLoadingMore: false,
-      queryFrom: isLoggedIn ? PV.Filters._myPlaylistsKey : PV.Filters.subscribedKey
+      queryFrom: isLoggedIn ? PV.Filters._myPlaylistsKey : PV.Filters._subscribedKey
     }
   }
 
@@ -89,7 +89,7 @@ export class PlaylistsScreen extends React.Component<Props, State> {
 
     return (
       <PlaylistTableCell
-        {...(queryFrom === PV.Filters.subscribedKey ? { createdBy: ownerName } : {})}
+        {...(queryFrom === PV.Filters._subscribedKey ? { createdBy: ownerName } : {})}
         hasZebraStripe={isOdd(index)}
         itemCount={item.itemCount}
         onPress={() =>
@@ -126,6 +126,7 @@ export class PlaylistsScreen extends React.Component<Props, State> {
               extraData={flatListData}
               isLoadingMore={isLoadingMore}
               ItemSeparatorComponent={this._ItemSeparatorComponent}
+              keyExtractor={(item: any) => item.id}
               renderItem={this._renderPlaylistItem}
               showNoInternetConnectionMessage={showNoInternetConnectionMessage}
             />
@@ -141,7 +142,7 @@ export class PlaylistsScreen extends React.Component<Props, State> {
             queryFrom === PV.Filters._myPlaylistsKey &&
             this.global.session.isLoggedIn &&
             flatListData.length < 1 && <MessageWithAction message='You have no subscribed playlists' />}
-          {!isLoading && queryFrom === PV.Filters.subscribedKey && flatListData.length < 1 && (
+          {!isLoading && queryFrom === PV.Filters._subscribedKey && flatListData.length < 1 && (
             <MessageWithAction message='You have no subscribed playlists' />
           )}
         </View>

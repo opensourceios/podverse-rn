@@ -1,22 +1,41 @@
 import React from 'react'
+import { GlobalTheme } from '../../src/resources/Interfaces'
+import { darkTheme } from '../../src/styles'
 import { PV } from '../resources'
-import { navHeader } from '../styles'
-import { Icon, NavItemWrapper } from './'
+import { NavItemIcon, NavItemWrapper } from './'
 
 type Props = {
+  globalTheme: GlobalTheme
+  isTransparent?: boolean
   navigation: any
+  showBackButton?: boolean
 }
 
 export const NavQueueIcon = (props: Props) => {
-  const { navigation } = props
+  const { isTransparent, navigation, showBackButton } = props
 
   const handlePress = () => {
-    navigation.navigate(PV.RouteNames.QueueScreen)
+    navigation.navigate({
+      routeName: PV.RouteNames.QueueScreen,
+      params: {
+        isTransparent,
+        showBackButton
+      }
+    })
+  }
+
+  let color = darkTheme.text.color
+  if (props.globalTheme) {
+    color = props.globalTheme?.text?.color
   }
 
   return (
     <NavItemWrapper handlePress={handlePress}>
-      <Icon color='#fff' name='list' size={PV.Icons.NAV} style={navHeader.buttonIcon} />
+      <NavItemIcon name='list' color={color} />
+      {/*<Image
+        source={PV.Images.QUEUE}
+        style={[navHeader.buttonIcon, { tintColor: '#fff', width: PV.Icons.NAV, height: PV.Icons.NAV }]}
+      />*/}
     </NavItemWrapper>
   )
 }

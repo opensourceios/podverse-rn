@@ -1,9 +1,9 @@
 import React from 'react'
 import { RefreshControl, StyleSheet } from 'react-native'
 import { SwipeListView } from 'react-native-swipe-list-view'
-import { getGlobal } from 'reactn'
+import { useGlobal } from 'reactn'
 import { PV } from '../resources'
-import { GlobalTheme } from '../resources/Interfaces'
+import { core } from '../styles'
 import { ActivityIndicator, MessageWithAction, Text, TextLink, View } from './'
 
 type Props = {
@@ -33,10 +33,11 @@ type Props = {
   showAddPodcastByRSS?: boolean
   showNoInternetConnectionMessage?: boolean
   showRequestPodcast?: boolean
+  transparent?: boolean
 }
 
 // This line silences a ref warning when a Flatlist doesn't need to be swipable.
-const _renderHiddenItem = () => <View />
+const _renderHiddenItem = (transparent?: boolean) => <View transparent={transparent} />
 
 export const PVFlatList = (props: Props) => {
   const {
@@ -62,9 +63,11 @@ export const PVFlatList = (props: Props) => {
     resultsText = 'results',
     showAddPodcastByRSS,
     showNoInternetConnectionMessage,
-    showRequestPodcast
+    showRequestPodcast,
+    transparent
   } = props
-  const { fontScaleMode, globalTheme } = getGlobal()
+  const [globalTheme] = useGlobal('globalTheme')
+  const [fontScaleMode] = useGlobal('fontScaleMode')
 
   let noResultsFound = false
   let endOfResults = false
@@ -79,8 +82,8 @@ export const PVFlatList = (props: Props) => {
 
   const textLinkStyle =
     PV.Fonts.fontScale.largest === fontScaleMode
-      ? [styles.textLink, { fontSize: PV.Fonts.largeSizes.md }]
-      : [styles.textLink]
+      ? [core.buttonTextLink, { fontSize: PV.Fonts.largeSizes.md }]
+      : [core.buttonTextLink]
   const noResultsFoundTextStyle =
     PV.Fonts.fontScale.largest === fontScaleMode
       ? [styles.noResultsFoundText, { fontSize: PV.Fonts.largeSizes.md }]
@@ -100,9 +103,8 @@ export const PVFlatList = (props: Props) => {
       Add Podcast by RSS Feed
     </TextLink>
   )
-
   return (
-    <View style={styles.view}>
+    <View style={styles.view} transparent={transparent}>
       {!noSubscribedPodcasts && ListHeaderComponent && <ListHeaderComponent />}
       {noSubscribedPodcasts && !showNoInternetConnectionMessage && !isLoadingMore && (
         <MessageWithAction
@@ -112,14 +114,14 @@ export const PVFlatList = (props: Props) => {
         />
       )}
       {showNoInternetConnectionMessage && !dataTotalCount && !isLoadingMore && (
-        <View style={styles.msgView}>
+        <View style={styles.msgView} transparent={transparent}>
           <Text
             fontSizeLargestScale={PV.Fonts.largeSizes.md}
             style={noResultsFoundTextStyle}>{`No internet connection`}</Text>
         </View>
       )}
       {noResultsFound && !noSubscribedPodcasts && !isLoadingMore && !showNoInternetConnectionMessage && (
-        <View style={styles.msgView}>
+        <View style={styles.msgView} transparent={transparent}>
           <Text fontSizeLargestScale={PV.Fonts.largeSizes.md} style={noResultsFoundTextStyle}>
             {`No ${resultsText} found`}
           </Text>
@@ -136,17 +138,17 @@ export const PVFlatList = (props: Props) => {
           disableRightSwipe={true}
           extraData={extraData}
           ItemSeparatorComponent={ItemSeparatorComponent}
-          keyExtractor={keyExtractor ? keyExtractor : (item: any) => item.id}
+          keyExtractor={keyExtractor}
           ListFooterComponent={() => {
             if (isLoadingMore) {
               return (
-                <View style={[styles.isLoadingMoreCell, globalTheme.tableCellBorder]}>
+                <View style={[styles.isLoadingMoreCell, globalTheme.tableCellBorder]} transparent={transparent}>
                   <ActivityIndicator />
                 </View>
               )
             } else if (endOfResults && !hideEndOfResults) {
               return (
-                <View style={[styles.lastCell, globalTheme.tableCellBorder]}>
+                <View style={[styles.lastCell, globalTheme.tableCellBorder]} transparent={transparent}>
                   <Text
                     fontSizeLargestScale={PV.Fonts.largeSizes.md}
                     style={[styles.lastCellText]}>{`End of ${resultsText}`}</Text>
@@ -166,7 +168,7 @@ export const PVFlatList = (props: Props) => {
           renderHiddenItem={renderHiddenItem || _renderHiddenItem}
           renderItem={renderItem}
           rightOpenValue={-100}
-          style={[globalTheme.flatList]}
+          style={[globalTheme.flatList, transparent ? { backgroundColor: 'transparent' } : {}]}
         />
       )}
     </View>
@@ -194,12 +196,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   noResultsFoundText: {
-    fontSize: PV.Fonts.sizes.xl,
-    marginVertical: 12,
-    paddingVertical: 12,
-    textAlign: 'center'
-  },
-  textLink: {
     fontSize: PV.Fonts.sizes.xl,
     marginVertical: 12,
     paddingVertical: 12,

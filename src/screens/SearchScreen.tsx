@@ -7,6 +7,7 @@ import {
   ButtonGroup,
   Divider,
   FlatList,
+  NavDismissIcon,
   PodcastTableCell,
   SearchBar,
   View
@@ -39,8 +40,12 @@ type State = {
 }
 
 export class SearchScreen extends React.Component<Props, State> {
-  static navigationOptions = {
-    title: 'Search'
+  static navigationOptions = ({ navigation }) => {
+    return {
+      title: 'Search',
+      headerLeft: <NavDismissIcon handlePress={navigation.dismiss} />,
+      headerRight: null
+    }
   }
 
   constructor(props: Props) {
@@ -249,6 +254,7 @@ export class SearchScreen extends React.Component<Props, State> {
             handleRequestPodcast={this._navToRequestPodcastForm}
             isLoadingMore={isLoadingMore}
             ItemSeparatorComponent={this._ItemSeparatorComponent}
+            keyExtractor={(item: any) => item.id}
             onEndReached={this._onEndReached}
             renderItem={this._renderPodcastItem}
             resultsText='podcasts'

@@ -35,6 +35,10 @@ export const Alerts = {
     title: 'Free Trial Expired',
     buttons: [{ text: _logoutButtonText, onPress: logoutUser }]
   },
+  LEAVING_APP: {
+    title: 'Leaving App',
+    message: 'You are about to be navigated to a website outside the app. Are you sure you want to leave Podverse?'
+  },
   LOGIN_INVALID: {
     message: 'Invalid username or password.',
     title: 'Login Error'
@@ -85,9 +89,5 @@ export const Alerts = {
   SOMETHING_WENT_WRONG: {
     message: 'Please check your internet connection and try again later.',
     title: _networkErrorTitle
-  },
-  LEAVING_APP: {
-    title: 'Leaving App',
-    message: 'You are about to be navigated to a website outside the app. Are you sure you want to leave Podverse?'
   }
 }

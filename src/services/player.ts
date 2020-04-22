@@ -210,11 +210,11 @@ export const initializePlayerQueue = async () => {
     const queueItems = await getQueueItems()
     let filteredItems = [] as any
 
-    // Use whatever the most recent item in the history is if one exists, else
-    // fallback to the last NowPlayingItem.
+    // Use whatever the most recent item in the history is if one exists, else fallback to the last NowPlayingItem.
     const historyItems = await getHistoryItems()
     let item = null
     let isNowPlayingItem = false
+
     if (historyItems[0]) {
       item = historyItems[0]
     } else {
@@ -294,14 +294,18 @@ export const loadItemAndPlayTrack = async (item: NowPlayingItem, shouldPlay: boo
 }
 
 export const playNextFromQueue = async () => {
-  await updateUserPlaybackPosition()
-  await PVTrackPlayer.skipToNext()
-  const currentId = await PVTrackPlayer.getCurrentTrack()
-  const item = await getNowPlayingItemFromQueueOrHistoryByTrackId(currentId)
-  if (item) {
-    await addOrUpdateHistoryItem(item)
+  const queueItems = await PVTrackPlayer.getQueue()
+  if (queueItems && queueItems.length > 1) {
+    await updateUserPlaybackPosition()
+    await PVTrackPlayer.skipToNext()
+    const currentId = await PVTrackPlayer.getCurrentTrack()
+    const item = await getNowPlayingItemFromQueueOrHistoryByTrackId(currentId)
+    if (item) {
+      await addOrUpdateHistoryItem(item)
+      await removeQueueItem(item)
+    }
+    sendPlayerScreenGoogleAnalyticsPageView(item)
   }
-  sendPlayerScreenGoogleAnalyticsPageView(item)
 }
 
 export const addItemToPlayerQueueNext = async (item: NowPlayingItem) => {
@@ -471,7 +475,7 @@ export const getNowPlayingItemFromQueueOrHistoryByTrackId = async (trackId: stri
   )
   let currentNowPlayingItem = queueItemIndex > -1 && queueItems[queueItemIndex]
 
-  if (currentNowPlayingItem) removeQueueItem(currentNowPlayingItem, false)
+  if (currentNowPlayingItem) removeQueueItem(currentNowPlayingItem)
 
   if (!currentNowPlayingItem) {
     const historyItems = await getHistoryItemsLocally()
@@ -496,4 +500,9 @@ export const togglePlay = async () => {
   } else {
     TrackPlayer.play()
   }
+}
+
+export const checkIdlePlayerState = async () => {
+  const state = await TrackPlayer.getState()
+  return state === 'idle' || state === 0 || state === TrackPlayer.STATE_NONE
 }

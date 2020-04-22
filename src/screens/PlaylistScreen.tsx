@@ -1,5 +1,5 @@
 import { StyleSheet, View as RNView } from 'react-native'
-import { NavigationScreenOptions } from 'react-navigation'
+import { NavigationStackOptions } from 'react-navigation-stack'
 import React, { setGlobal } from 'reactn'
 import {
   ActionSheet,
@@ -8,7 +8,7 @@ import {
   Divider,
   EpisodeTableCell,
   FlatList,
-  NavQueueIcon,
+  NavSearchIcon,
   NavShareIcon,
   PlaylistTableHeader,
   View
@@ -52,10 +52,10 @@ export class PlaylistScreen extends React.Component<Props, State> {
             playlistTitle={playlistTitle}
             url={PV.URLs.playlist + playlistId}
           />
-          <NavQueueIcon navigation={navigation} />
+          <NavSearchIcon navigation={navigation} />
         </RNView>
       )
-    } as NavigationScreenOptions
+    } as NavigationStackOptions
   }
 
   constructor(props: Props) {
@@ -258,6 +258,7 @@ export class PlaylistScreen extends React.Component<Props, State> {
             extraData={flatListData}
             isLoadingMore={isLoadingMore}
             ItemSeparatorComponent={this._ItemSeparatorComponent}
+            keyExtractor={(item: any) => item.id}
             renderItem={this._renderItem}
           />
         )}

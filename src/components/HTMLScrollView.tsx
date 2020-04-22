@@ -1,7 +1,7 @@
 import { Dimensions, Linking, ScrollView, StyleSheet } from 'react-native'
 import HTML from 'react-native-render-html'
-import React, { getGlobal } from 'reactn'
-import { convertHHMMSSToAnchorTags, removeHTMLAttributesFromString } from '../lib/utility'
+import React, { useGlobal } from 'reactn'
+import { convertHHMMSSToAnchorTags, filterHTMLElementsFromString, removeHTMLAttributesFromString } from '../lib/utility'
 import { PV } from '../resources'
 import { setPlaybackPosition } from '../services/player'
 
@@ -13,13 +13,15 @@ type Props = {
 
 export const HTMLScrollView = (props: Props) => {
   const { fontSizeLargerScale, fontSizeLargestScale, html } = props
-  const { fontScaleMode, globalTheme } = getGlobal()
+  const [globalTheme] = useGlobal('globalTheme')
+  const [fontScaleMode] = useGlobal('fontScaleMode')
   const baseFontStyle = {
     ...globalTheme.text,
     ...styles.baseFontStyle
   }
 
   let formattedHtml = removeHTMLAttributesFromString(html)
+  formattedHtml = filterHTMLElementsFromString(formattedHtml)
   formattedHtml = convertHHMMSSToAnchorTags(formattedHtml)
   formattedHtml = formattedHtml.linkifyHtml()
 
@@ -106,6 +108,9 @@ const customHTMLTagStyles = {
   },
   li: {
     listStyleType: 'none'
+  },
+  img: {
+    display: 'none'
   }
 }
 
@@ -114,10 +119,12 @@ const styles = StyleSheet.create({
     fontSize: PV.Fonts.sizes.lg
   },
   html: {
+    backgroundColor: 'transparent',
     marginHorizontal: 8,
     marginVertical: 12
   },
   scrollView: {
+    backgroundColor: 'transparent',
     flex: 1
   }
 })
